@@ -5,3 +5,6 @@
 # Package managers
 /vendor/
 /composer.lock
+
+# Cache
+/.phpunit.result.cache
