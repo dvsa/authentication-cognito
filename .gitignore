@@ -3,8 +3,8 @@
 /.vscode
 
 # Package managers
-/vendor/
-/composer.lock
+vendor/
+composer.lock
 
 # Cache
 /.phpunit.result.cache
