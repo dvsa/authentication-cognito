@@ -1,6 +1,6 @@
 <?php
 
-namespace Dvsa\Authentication\Cognito\Tests\Unit;
+namespace Dvsa\Authentication\Cognito\Tests;
 
 use PHPUnit\Framework\TestCase;
 
