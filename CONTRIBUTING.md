@@ -25,7 +25,7 @@ We'd also love PRs. If you're thinking of a large PR, we advise opening up an is
 1. Grab a coffee, and wait for your pull request to be reviewed and merged.
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
-- Follow the current [style guide][style]. Any linting errors should be displayed after running: `composer check-code-style`.
+- Follow the current [style guide][style]. Any linting errors should be displayed after running: `./vendor/bin/phpcs` (ensure `composer bin phpcs install ` has been executed to install PHP-CodeSniffer).
 - Write and update tests.
 - Keep your changes as focused as possible. If there are multiple changes you would like to make that are not dependent upon each other, consider submitting them as separate pull requests.
 - Write a [good commit message][good-commit-message].
