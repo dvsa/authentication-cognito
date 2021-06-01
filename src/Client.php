@@ -36,14 +36,6 @@ class Client implements ClientInterface, TokenInterface
      */
     private $jwtWebKeys;
 
-    /**
-     * CognitoClient constructor.
-     *
-     * @param  CognitoIdentityProviderClient  $client
-     * @param  string                         $clientId
-     * @param  string                         $clientSecret
-     * @param  string                         $poolId
-     */
     public function __construct(
         CognitoIdentityProviderClient $client,
         string $clientId,
