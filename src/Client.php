@@ -114,10 +114,20 @@ class Client implements ClientInterface, TokenInterface
     protected function getJwtWebKeys(): array
     {
         if (!$this->jwtWebKeys) {
-            $this->jwtWebKeys = $this->downloadJwtWebKeys();
+            $this->jwtWebKeys = $this->parseJwk($this->downloadJwtWebKeys());
         }
 
         return $this->jwtWebKeys;
+    }
+
+    /**
+     * @throws \InvalidArgumentException     Provided JWK Set is empty
+     * @throws \UnexpectedValueException     Provided JWK Set was invalid
+     * @throws \DomainException              OpenSSL failure
+     */
+    protected function parseJwk(array $keys): array
+    {
+        return JWK::parseKeySet($keys);
     }
 
     /**
