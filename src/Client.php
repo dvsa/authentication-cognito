@@ -111,20 +111,7 @@ class Client implements ClientInterface, TokenInterface
         // TODO: Implement getUserByToken() method.
     }
 
-    /**
-     * @param  string  $identifier
-     *
-     * @return string
-     */
-    protected function cognitoSecretHash(string $identifier): string
-    {
-        return $this->hash($identifier . $this->clientId);
-    }
-
-    /**
-     * @return JWK
-     */
-    protected function getJwtWebKeys()
+    protected function getJwtWebKeys(): array
     {
         if (!$this->jwtWebKeys) {
             $this->jwtWebKeys = $this->downloadJwtWebKeys();
@@ -135,8 +122,6 @@ class Client implements ClientInterface, TokenInterface
 
     /**
      * @throws RuntimeException - On invalid JSON response from the endpoint.
-     *
-     * @return array
      */
     protected function downloadJwtWebKeys(): array
     {
@@ -158,11 +143,17 @@ class Client implements ClientInterface, TokenInterface
     }
 
     /**
-     * Creates a HMAC from a string.
-     *
-     * @param  string  $message
+     * @param  string  $identifier
      *
      * @return string
+     */
+    protected function cognitoSecretHash(string $identifier): string
+    {
+        return $this->hash($identifier . $this->clientId);
+    }
+
+    /**
+     * Creates a HMAC from a string using the AWS client secret.
      */
     protected function hash(string $message): string
     {
@@ -177,11 +168,7 @@ class Client implements ClientInterface, TokenInterface
     }
 
     /**
-     * Format attributes in Name/Value array.
-     *
-     * @param array $attributes
-     *
-     * @return array
+     * Format attributes from [Key => Value] to a AWS compatible ['Name', 'Value'] array.
      */
     protected function formatAttributes(array $attributes): array
     {
