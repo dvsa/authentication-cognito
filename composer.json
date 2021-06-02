@@ -11,7 +11,11 @@
     }
   ],
   "require": {
-    "php": "^7.2.5 || ^8.0"
+    "php": "^7.2.5 || ^8.0",
+    "ext-json": "*",
+    "aws/aws-sdk-php": "~3.183.7",
+    "dvsa/contracts": "dev-main",
+    "firebase/php-jwt": "^5.2"
   },
   "autoload": {
     "psr-4": {
