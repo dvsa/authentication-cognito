@@ -2,12 +2,10 @@
 
 namespace Dvsa\Authentication\Cognito;
 
-use ArrayAccess;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Dvsa\Contracts\Auth\ClientInterface;
 use Dvsa\Contracts\Auth\TokenInterface;
 use Firebase\JWT\JWK;
-use RuntimeException;
 
 class Client implements ClientInterface, TokenInterface
 {
@@ -48,7 +46,7 @@ class Client implements ClientInterface, TokenInterface
         $this->poolId = $poolId;
     }
 
-    public function register(string $identifier, string $password, array $attributes = []): ArrayAccess
+    public function register(string $identifier, string $password, array $attributes = []): \ArrayAccess
     {
         // TODO: Implement register() method.
     }
@@ -83,11 +81,17 @@ class Client implements ClientInterface, TokenInterface
         // TODO: Implement disableUser() method.
     }
 
-    public function getUserByIdentifier(string $identifier): ArrayAccess
+    public function getUserByIdentifier(string $identifier): \ArrayAccess
     {
         // TODO: Implement getUserByIdentifier() method.
     }
 
+    /**
+     * @throws \RuntimeException             Malformed JSON from JWK response.
+     * @throws \InvalidArgumentException     Used JWK Set is empty
+     * @throws \UnexpectedValueException     Used JWK Set was invalid
+     * @throws \DomainException              OpenSSL failure
+     */
     public function isValidToken(string $token): bool
     {
         // TODO: Implement isValidToken() method.
@@ -98,7 +102,7 @@ class Client implements ClientInterface, TokenInterface
         // TODO: Implement refreshToken() method.
     }
 
-    public function getUserByToken(string $token): ArrayAccess
+    public function getUserByToken(string $token): \ArrayAccess
     {
         // TODO: Implement getUserByToken() method.
     }
@@ -112,19 +116,11 @@ class Client implements ClientInterface, TokenInterface
         return $this->jwtWebKeys;
     }
 
-    /**
-     * @throws \InvalidArgumentException     Provided JWK Set is empty
-     * @throws \UnexpectedValueException     Provided JWK Set was invalid
-     * @throws \DomainException              OpenSSL failure
-     */
     protected function parseJwk(array $keys): array
     {
         return JWK::parseKeySet($keys);
     }
 
-    /**
-     * @throws RuntimeException - On invalid JSON response from the endpoint.
-     */
     protected function downloadJwtWebKeys(): array
     {
         $url = sprintf(
@@ -135,10 +131,11 @@ class Client implements ClientInterface, TokenInterface
 
         $json = file_get_contents($url);
 
-        $keys = json_decode($json, true); // PHP >=7.3: use JSON_THROW_ON_ERROR flag.
+        // TODO: PHP >=7.3: use JSON_THROW_ON_ERROR flag.
+        $keys = json_decode($json, true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
-            throw new RuntimeException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
+            throw new \RuntimeException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
         }
 
         return $keys;
