@@ -3,6 +3,8 @@
 namespace Dvsa\Authentication\Cognito;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
+use Aws\Exception\AwsException;
+use Dvsa\Contracts\Auth\ClientException;
 use Dvsa\Contracts\Auth\ClientInterface;
 use Dvsa\Contracts\Auth\TokenInterface;
 use Firebase\JWT\JWK;
@@ -48,10 +50,21 @@ class Client implements ClientInterface, TokenInterface
 
     public function register(string $identifier, string $password, array $attributes = []): \ArrayAccess
     {
-        // TODO: Implement register() method.
+        try {
+            return $this->client->adminCreateUser([
+                'MessageAction' => 'SUPPRESS',
+                'TemporaryPassword' => $password,
+                'UserAttributes' => $this->formatAttributes($attributes),
+                'UserPoolId' => $this->poolId,
+                'Username' => $identifier
+
+            ]);
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), $e->getCode(), $e);
+        }
     }
 
-    public function authenticate(string $identifier, string $password): string
+    public function authenticate(string $identifier, string $password): \ArrayAccess
     {
         // TODO: Implement authenticate() method.
     }
