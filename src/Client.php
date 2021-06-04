@@ -57,6 +57,8 @@ class Client implements ClientInterface, TokenInterface
      */
     public function register(string $identifier, string $password, array $attributes = []): \ArrayAccess
     {
+        $attributes = array_merge(['email_verified' => true], $attributes);
+
         try {
             return $this->client->adminCreateUser([
                 'MessageAction' => 'SUPPRESS',
