@@ -69,7 +69,7 @@ class Client implements ClientInterface, TokenInterface
 
             ]);
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), $e->getCode(), $e);
+            throw new ClientException($e->getMessage(), (int)$e->getCode(), $e);
         }
     }
 
