@@ -69,16 +69,15 @@ class Client implements OAuthClientInterface
 
             ]);
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int)$e->getCode(), $e);
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
         }
     }
 
     /**
-     * TODO: For >=PHP7.4 change the return type to the correct \Aws\Result.
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
      *
      * @return Result
      *
-     *                          Use `getPrevious()` to get the AWS exception for more details.
      * @throws ClientException when there is an issue with authenticating a user.
      */
     public function authenticate(string $identifier, string $password): \ArrayAccess
@@ -131,7 +130,7 @@ class Client implements OAuthClientInterface
         // TODO: Implement getUserByIdentifier() method.
 
     /**
-     * TODO: For >=PHP7.4 change the return type to the correct \Aws\Result.
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_GetUser.html
      *
      * @return Result
      *
@@ -188,6 +187,8 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
+     *
      * @return Result
      *
      * @throws ClientException when there was an issue with refreshing the user's token.
