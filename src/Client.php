@@ -9,6 +9,7 @@ use Dvsa\Contracts\Auth\ClientInterface;
 use Dvsa\Contracts\Auth\ClientException;
 use Dvsa\Contracts\Auth\TokenInterface;
 use Firebase\JWT\JWK;
+use Firebase\JWT\JWT;
 
 class Client implements ClientInterface, TokenInterface
 {
@@ -129,33 +130,84 @@ class Client implements ClientInterface, TokenInterface
     public function getUserByIdentifier(string $identifier): \ArrayAccess
     {
         // TODO: Implement getUserByIdentifier() method.
+
+    /**
+     * TODO: For >=PHP7.4 change the return type to the correct \Aws\Result.
+     *
+     * @return Result
+     *
+     * @throws ClientException when there is an issue with getting a user.
+     */
+    public function getUserByAccessToken(string $accessToken): \ArrayAccess
+    {
+        try {
+            return $this->client->getUser([
+                'UserPoolId' => $this->poolId,
+                'AccessToken' => $accessToken
+            ]);
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
     /**
-     * @throws \RuntimeException             Malformed JSON from JWK response.
-     * @throws \InvalidArgumentException     Used JWK Set is empty
-     * @throws \UnexpectedValueException     Used JWK Set was invalid
-     * @throws \DomainException              OpenSSL failure
+     * @throws InvalidTokenException when the token provided is invalid and cannot be decoded.
      */
-    public function isValidToken(string $token): bool
+    public function decodeToken(string $token): object
     {
-        // TODO: Implement isValidToken() method.
-    }
+        try {
+            $keySet = $this->getJwtWebKeys();
+            $jwt = JWT::decode($token, JWK::parseKeySet($keySet), ['RS256']);
 
-    public function refreshToken(string $token, string $identifier): string
-    {
-        // TODO: Implement refreshToken() method.
-    }
+            # Additional checks per AWS requirements to verify tokens.
+            # https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
+            if (!isset($jwt->aud) || $jwt->aud !== $this->poolId) {
+                throw new InvalidTokenException('"aud" invalid');
+            }
 
-    public function getUserByToken(string $token): \ArrayAccess
-    {
-        // TODO: Implement getUserByToken() method.
+            $expectedIss = sprintf('https://cognito-idp.%s.amazonaws.com/%s', $this->client->getRegion(), $this->poolId);
+            if (!isset($jwt->iss) || $jwt->iss !== $expectedIss) {
+                throw new InvalidTokenException('"iss" invalid');
+            }
+
+            if (!isset($jwt->token_use) || !in_array($jwt->token_use, ['id', 'access'])) {
+                throw new InvalidTokenException('"token_use" invalid');
+            }
+
+            return $jwt;
+        } catch (\Exception $e) {
+            throw new InvalidTokenException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
     /**
-     * @return string[]
+     * @return Result
+     *
+     * @throws ClientException when there was an issue with refreshing the user's token.
      */
-    protected function getJwtWebKeys(): array
+    public function refreshTokens(string $refreshToken, string $identifier): \ArrayAccess
+    {
+        try {
+            return $this->client->adminInitiateAuth([
+                'AuthFlow' => 'REFRESH_TOKEN_AUTH',
+                'AuthParameters' => [
+                    'REFRESH_TOKEN' => $refreshToken,
+                    'SECRET_HASH' => $this->cognitoSecretHash($identifier),
+                ],
+                'ClientId' => $this->clientId,
+                'UserPoolId' => $this->poolId,
+            ]);
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
+    }
+
+    public function setJwkWebKeys(array $keys): void
+    {
+        $this->jwtWebKeys = $keys;
+    }
+
+    public function getJwtWebKeys(): array
     {
         if (!$this->jwtWebKeys) {
             $this->jwtWebKeys = $this->parseJwk($this->downloadJwtWebKeys());
@@ -172,6 +224,9 @@ class Client implements ClientInterface, TokenInterface
         return JWK::parseKeySet($keys);
     }
 
+    /**
+     * @throws \JsonException
+     */
     protected function downloadJwtWebKeys(): array
     {
         $url = sprintf(
@@ -182,11 +237,14 @@ class Client implements ClientInterface, TokenInterface
 
         $json = file_get_contents($url);
 
-        // TODO: PHP >=7.3: use JSON_THROW_ON_ERROR flag.
+        if (false === $json) {
+            return [];
+        }
+
         $keys = json_decode($json, true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
-            throw new \RuntimeException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
+            throw new \JsonException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
         }
 
         return $keys;
@@ -213,7 +271,7 @@ class Client implements ClientInterface, TokenInterface
     }
 
     /**
-     * Format attributes from [Key => Value] to a AWS compatible ['Name', 'Value'] array.
+     * Format attributes from [Key => Value] to a AWS compatible [['Name', 'Value'], ...] array.
      */
     protected function formatAttributes(array $attributes): array
     {
