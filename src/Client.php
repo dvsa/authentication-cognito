@@ -155,13 +155,11 @@ class Client implements OAuthClientInterface
     {
         try {
             $keySet = $this->getJwtWebKeys();
-            $jwt = JWT::decode($token, JWK::parseKeySet($keySet), ['RS256']);
+
             $jwt = JWT::decode($token, $keySet, ['RS256']);
 
             # Additional checks per AWS requirements to verify tokens.
             # https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
-            if (!isset($jwt->aud) || $jwt->aud !== $this->poolId) {
-                throw new InvalidTokenException('"aud" invalid');
             if (!isset($jwt->token_use) || !in_array($jwt->token_use, ['id', 'access'])) {
                 throw new InvalidTokenException('"token_use" invalid');
             }
@@ -171,8 +169,6 @@ class Client implements OAuthClientInterface
                 throw new InvalidTokenException('"iss" invalid');
             }
 
-            if (!isset($jwt->token_use) || !in_array($jwt->token_use, ['id', 'access'])) {
-                throw new InvalidTokenException('"token_use" invalid');
             # Only applied to Id tokens.
             if ($jwt->token_use === 'id') {
                 if (!isset($jwt->aud) || $jwt->aud !== $this->clientId) {
