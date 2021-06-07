@@ -5,8 +5,8 @@ namespace Dvsa\Authentication\Cognito;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
 use Aws\Result;
-use Dvsa\Contracts\Auth\ClientException;
 use Dvsa\Contracts\Auth\ClientInterface;
+use Dvsa\Contracts\Auth\ClientException;
 use Dvsa\Contracts\Auth\TokenInterface;
 use Firebase\JWT\JWK;
 
@@ -33,9 +33,9 @@ class Client implements ClientInterface, TokenInterface
     protected $poolId;
 
     /**
-     * @var JWK
+     * @var string[]
      */
-    private $jwtWebKeys;
+    protected $jwtWebKeys = [];
 
     public function __construct(
         CognitoIdentityProviderClient $client,
@@ -73,9 +73,32 @@ class Client implements ClientInterface, TokenInterface
         }
     }
 
+    /**
+     * TODO: For >=PHP7.4 change the return type to the correct \Aws\Result.
+     *
+     * @return Result See https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html#API_AdminInitiateAuth_ResponseSyntax
+     *
+     * @throws ClientException  Issue with authenticating the provided credentials.
+     *                          Use `getPrevious()` to get the AWS exception for more details.
+     */
     public function authenticate(string $identifier, string $password): \ArrayAccess
     {
-        // TODO: Implement authenticate() method.
+        try {
+            return $this->client->adminInitiateAuth(
+                [
+                    'AuthFlow'       => 'ADMIN_USER_PASSWORD_AUTH',
+                    'AuthParameters' => [
+                        'USERNAME'    => $identifier,
+                        'PASSWORD'    => $password,
+                        'SECRET_HASH' => $this->cognitoSecretHash($identifier),
+                    ],
+                    'ClientId'       => $this->clientId,
+                    'UserPoolId'     => $this->poolId,
+                ]
+            );
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
     public function changePassword(string $identifier, string $newPassword): bool
@@ -129,6 +152,9 @@ class Client implements ClientInterface, TokenInterface
         // TODO: Implement getUserByToken() method.
     }
 
+    /**
+     * @return string[]
+     */
     protected function getJwtWebKeys(): array
     {
         if (!$this->jwtWebKeys) {
@@ -138,6 +164,9 @@ class Client implements ClientInterface, TokenInterface
         return $this->jwtWebKeys;
     }
 
+    /**
+     * @return string[]
+     */
     protected function parseJwk(array $keys): array
     {
         return JWK::parseKeySet($keys);
@@ -163,11 +192,6 @@ class Client implements ClientInterface, TokenInterface
         return $keys;
     }
 
-    /**
-     * @param  string  $identifier
-     *
-     * @return string
-     */
     protected function cognitoSecretHash(string $identifier): string
     {
         return $this->hash($identifier . $this->clientId);
