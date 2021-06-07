@@ -3,6 +3,9 @@
 namespace Dvsa\Authentication\Cognito;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
+use Aws\Exception\AwsException;
+use Aws\Result;
+use Dvsa\Contracts\Auth\ClientException;
 use Dvsa\Contracts\Auth\ClientInterface;
 use Dvsa\Contracts\Auth\TokenInterface;
 use Firebase\JWT\JWK;
@@ -46,12 +49,31 @@ class Client implements ClientInterface, TokenInterface
         $this->poolId = $poolId;
     }
 
+    /**
+     * @return Result See https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html#API_AdminCreateUser_ResponseSyntax
+     *
+     * @throws ClientException  Issue with creating user with the provided credentials.
+     *                          Use `getPrevious()` to get the AWS exception for more details.
+     */
     public function register(string $identifier, string $password, array $attributes = []): \ArrayAccess
     {
-        // TODO: Implement register() method.
+        $attributes = array_merge(['email_verified' => 'true'], $attributes);
+
+        try {
+            return $this->client->adminCreateUser([
+                'MessageAction' => 'SUPPRESS',
+                'TemporaryPassword' => $password,
+                'UserAttributes' => $this->formatAttributes($attributes),
+                'UserPoolId' => $this->poolId,
+                'Username' => $identifier
+
+            ]);
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int)$e->getCode(), $e);
+        }
     }
 
-    public function authenticate(string $identifier, string $password): string
+    public function authenticate(string $identifier, string $password): \ArrayAccess
     {
         // TODO: Implement authenticate() method.
     }
