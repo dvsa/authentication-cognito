@@ -5,13 +5,13 @@ namespace Dvsa\Authentication\Cognito;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
 use Aws\Result;
-use Dvsa\Contracts\Auth\ClientInterface;
 use Dvsa\Contracts\Auth\ClientException;
-use Dvsa\Contracts\Auth\TokenInterface;
+use Dvsa\Contracts\Auth\InvalidTokenException;
+use Dvsa\Contracts\Auth\OAuthClientInterface;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 
-class Client implements ClientInterface, TokenInterface
+class Client implements OAuthClientInterface
 {
     /**
      * @var CognitoIdentityProviderClient
@@ -51,10 +51,9 @@ class Client implements ClientInterface, TokenInterface
     }
 
     /**
-     * @return Result See https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html#API_AdminCreateUser_ResponseSyntax
+     * @return Result
      *
-     * @throws ClientException  Issue with creating user with the provided credentials.
-     *                          Use `getPrevious()` to get the AWS exception for more details.
+     * @throws ClientException when there is an with creating user with the provided credentials.
      */
     public function register(string $identifier, string $password, array $attributes = []): \ArrayAccess
     {
@@ -77,10 +76,10 @@ class Client implements ClientInterface, TokenInterface
     /**
      * TODO: For >=PHP7.4 change the return type to the correct \Aws\Result.
      *
-     * @return Result See https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html#API_AdminInitiateAuth_ResponseSyntax
+     * @return Result
      *
-     * @throws ClientException  Issue with authenticating the provided credentials.
      *                          Use `getPrevious()` to get the AWS exception for more details.
+     * @throws ClientException when there is an issue with authenticating a user.
      */
     public function authenticate(string $identifier, string $password): \ArrayAccess
     {
@@ -158,11 +157,14 @@ class Client implements ClientInterface, TokenInterface
         try {
             $keySet = $this->getJwtWebKeys();
             $jwt = JWT::decode($token, JWK::parseKeySet($keySet), ['RS256']);
+            $jwt = JWT::decode($token, $keySet, ['RS256']);
 
             # Additional checks per AWS requirements to verify tokens.
             # https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
             if (!isset($jwt->aud) || $jwt->aud !== $this->poolId) {
                 throw new InvalidTokenException('"aud" invalid');
+            if (!isset($jwt->token_use) || !in_array($jwt->token_use, ['id', 'access'])) {
+                throw new InvalidTokenException('"token_use" invalid');
             }
 
             $expectedIss = sprintf('https://cognito-idp.%s.amazonaws.com/%s', $this->client->getRegion(), $this->poolId);
@@ -172,6 +174,11 @@ class Client implements ClientInterface, TokenInterface
 
             if (!isset($jwt->token_use) || !in_array($jwt->token_use, ['id', 'access'])) {
                 throw new InvalidTokenException('"token_use" invalid');
+            # Only applied to Id tokens.
+            if ($jwt->token_use === 'id') {
+                if (!isset($jwt->aud) || $jwt->aud !== $this->clientId) {
+                    throw new InvalidTokenException('"aud" invalid');
+                }
             }
 
             return $jwt;
@@ -209,7 +216,7 @@ class Client implements ClientInterface, TokenInterface
 
     public function getJwtWebKeys(): array
     {
-        if (!$this->jwtWebKeys) {
+        if (empty($this->jwtWebKeys)) {
             $this->jwtWebKeys = $this->parseJwk($this->downloadJwtWebKeys());
         }
 
