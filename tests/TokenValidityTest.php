@@ -5,6 +5,7 @@ namespace Dvsa\Authentication\Cognito\Tests;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Contracts\Auth\InvalidTokenException;
+use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -52,16 +53,18 @@ X4nLcSbZtO0tcDGMfMpWF2JGYOEJQNetPozL/ICGVFyIO8yzXm8U
 
         $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
 
-        $this->client->setJwkWebKeys([
-            'keys' => [[
-                "kid" => "1234example=",
-                "alg" => "RS256",
-                "kty" => "RSA",
-                "e" => "AQAB",
-                "n" => "0Ttga33B1yX4w77NbpKyNYDNSVCo8j-RlZaZ9tI-KfkV1d-tfsvI9ZPAheP11FoN52ceBaY5ltelHW-IKwCfyT0orLdsxLgowaXki9woF1Azvcg2JVxQLv9aVjjAvy3CZFIG_EeN7J3nsyCXGnu1yMEbnvkWxA88__Q6HQ2K9wqfApkQ0LNlsK0YHz_sfjHNvRKxnbAJk7D5fUhZunPZXOPHXFgA5SvLvMaNIXduMKJh4OMfuoLdJowXJAR9j31Mqz_is4FMhm_9Mq7vZZ-uF09htRvIR8tRY28oJuW1gKWyg7cQQpnjHgFyG3XLXWAeXclWqyh_LfjyHQjrYhyeFw",
-                "use" => "sig",
-            ]]
-        ]);
+        $this->client->setJwkWebKeys(
+            JWK::parseKeySet([
+                'keys' => [[
+                    "kid" => "1234example=",
+                    "alg" => "RS256",
+                    "kty" => "RSA",
+                    "e" => "AQAB",
+                    "n" => "0Ttga33B1yX4w77NbpKyNYDNSVCo8j-RlZaZ9tI-KfkV1d-tfsvI9ZPAheP11FoN52ceBaY5ltelHW-IKwCfyT0orLdsxLgowaXki9woF1Azvcg2JVxQLv9aVjjAvy3CZFIG_EeN7J3nsyCXGnu1yMEbnvkWxA88__Q6HQ2K9wqfApkQ0LNlsK0YHz_sfjHNvRKxnbAJk7D5fUhZunPZXOPHXFgA5SvLvMaNIXduMKJh4OMfuoLdJowXJAR9j31Mqz_is4FMhm_9Mq7vZZ-uF09htRvIR8tRY28oJuW1gKWyg7cQQpnjHgFyG3XLXWAeXclWqyh_LfjyHQjrYhyeFw",
+                    "use" => "sig",
+                ]]
+            ])
+        );
     }
 
     public function testWillDecodeCompliantJwt(): void
@@ -124,7 +127,7 @@ X4nLcSbZtO0tcDGMfMpWF2JGYOEJQNetPozL/ICGVFyIO8yzXm8U
             "alg" => "RS256",
             "aud" => "NOT_POOL_ID",
             "iss" => sprintf('https://cognito-idp.%s.amazonaws.com/%s', 'eu-west-2', 'POOL_ID'),
-            "token_use" => 'not_expected',
+            "token_use" => 'id',
         ];
 
         $encoded = JWT::encode($payload, self::PRIVATE_KEY, 'RS256', '1234example=');
