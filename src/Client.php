@@ -69,7 +69,7 @@ class Client implements OAuthClientInterface
 
             ]);
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
@@ -96,7 +96,7 @@ class Client implements OAuthClientInterface
                 ]
             );
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
@@ -117,7 +117,7 @@ class Client implements OAuthClientInterface
 
             return true;
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
@@ -145,7 +145,7 @@ class Client implements OAuthClientInterface
 
             return true;
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
@@ -164,7 +164,7 @@ class Client implements OAuthClientInterface
 
             return true;
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
@@ -183,7 +183,7 @@ class Client implements OAuthClientInterface
 
             return true;
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
@@ -202,7 +202,7 @@ class Client implements OAuthClientInterface
                 'Username' => $identifier
             ]);
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
@@ -221,7 +221,7 @@ class Client implements OAuthClientInterface
                 'AccessToken' => $token
             ]);
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
@@ -279,7 +279,7 @@ class Client implements OAuthClientInterface
                 'UserPoolId' => $this->poolId,
             ]);
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
