@@ -187,9 +187,24 @@ class Client implements OAuthClientInterface
         }
     }
 
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html
+     *
+     * @return Result
+     *
+     * @throws ClientException when there is an issue with authenticating a user.
+     */
     public function getUserByIdentifier(string $identifier): \ArrayAccess
     {
-        // TODO: Implement getUserByIdentifier() method.
+        try {
+            return $this->client->adminGetUser([
+                'UserPoolId' => $this->poolId,
+                'Username' => $identifier
+            ]);
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
+    }
 
     /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_GetUser.html
