@@ -100,9 +100,25 @@ class Client implements OAuthClientInterface
         }
     }
 
-    public function changePassword(string $identifier, string $newPassword): bool
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminSetUserPassword.html
+     *
+     * @throws ClientException when there is an issue with changing a user's password.
+     */
+    public function changePassword(string $identifier, string $newPassword, bool $permanent = true): bool
     {
-        // TODO: Implement changePassword() method.
+        try {
+            $this->client->adminSetUserPassword([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+                'Password' => $newPassword,
+                'Permanent' => true
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
     public function changeAttribute(string $identifier, string $key, string $value): bool
