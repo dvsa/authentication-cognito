@@ -149,14 +149,42 @@ class Client implements OAuthClientInterface
         }
     }
 
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminEnableUser.html
+     *
+     * @throws ClientException when there is an issue with enabling a user.
+     */
     public function enableUser(string $identifier): bool
     {
-        // TODO: Implement enableUser() method.
+        try {
+            $this->client->adminEnableUser([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminDisableUser.html
+     *
+     * @throws ClientException when there is an issue with disabling a user.
+     */
     public function disableUser(string $identifier): bool
     {
-        // TODO: Implement disableUser() method.
+        try {
+            $this->client->adminDisableUser([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
     public function getUserByIdentifier(string $identifier): \ArrayAccess
