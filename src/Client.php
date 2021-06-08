@@ -5,12 +5,13 @@ namespace Dvsa\Authentication\Cognito;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
 use Aws\Result;
-use Dvsa\Contracts\Auth\ClientInterface;
 use Dvsa\Contracts\Auth\ClientException;
-use Dvsa\Contracts\Auth\TokenInterface;
+use Dvsa\Contracts\Auth\InvalidTokenException;
+use Dvsa\Contracts\Auth\OAuthClientInterface;
 use Firebase\JWT\JWK;
+use Firebase\JWT\JWT;
 
-class Client implements ClientInterface, TokenInterface
+class Client implements OAuthClientInterface
 {
     /**
      * @var CognitoIdentityProviderClient
@@ -50,10 +51,9 @@ class Client implements ClientInterface, TokenInterface
     }
 
     /**
-     * @return Result See https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html#API_AdminCreateUser_ResponseSyntax
+     * @return Result
      *
-     * @throws ClientException  Issue with creating user with the provided credentials.
-     *                          Use `getPrevious()` to get the AWS exception for more details.
+     * @throws ClientException when there is an with creating user with the provided credentials.
      */
     public function register(string $identifier, string $password, array $attributes = []): \ArrayAccess
     {
@@ -69,17 +69,16 @@ class Client implements ClientInterface, TokenInterface
 
             ]);
         } catch (AwsException $e) {
-            throw new ClientException($e->getMessage(), (int)$e->getCode(), $e);
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
         }
     }
 
     /**
-     * TODO: For >=PHP7.4 change the return type to the correct \Aws\Result.
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
      *
-     * @return Result See https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html#API_AdminInitiateAuth_ResponseSyntax
+     * @return Result
      *
-     * @throws ClientException  Issue with authenticating the provided credentials.
-     *                          Use `getPrevious()` to get the AWS exception for more details.
+     * @throws ClientException when there is an issue with authenticating a user.
      */
     public function authenticate(string $identifier, string $password): \ArrayAccess
     {
@@ -101,63 +100,197 @@ class Client implements ClientInterface, TokenInterface
         }
     }
 
-    public function changePassword(string $identifier, string $newPassword): bool
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminSetUserPassword.html
+     *
+     * @throws ClientException when there is an issue with changing a user's password.
+     */
+    public function changePassword(string $identifier, string $newPassword, bool $permanent = true): bool
     {
-        // TODO: Implement changePassword() method.
+        try {
+            $this->client->adminSetUserPassword([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+                'Password' => $newPassword,
+                'Permanent' => $permanent,
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
+    /**
+     * @throws ClientException when there is an issue with changing a user's attribute.
+     */
     public function changeAttribute(string $identifier, string $key, string $value): bool
     {
-        // TODO: Implement changeAttribute() method.
+        return $this->changeAttributes($identifier, [$key => $value]);
     }
 
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminUpdateUserAttributes.html
+     *
+     * @throws ClientException when there is an issue with changing a user's attributes.
+     */
     public function changeAttributes(string $identifier, array $attributes): bool
     {
-        // TODO: Implement changeAttributes() method.
+        try {
+            $this->client->adminUpdateUserAttributes([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+                'UserAttributes' => $this->formatAttributes($attributes)
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminEnableUser.html
+     *
+     * @throws ClientException when there is an issue with enabling a user.
+     */
     public function enableUser(string $identifier): bool
     {
-        // TODO: Implement enableUser() method.
+        try {
+            $this->client->adminEnableUser([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminDisableUser.html
+     *
+     * @throws ClientException when there is an issue with disabling a user.
+     */
     public function disableUser(string $identifier): bool
     {
-        // TODO: Implement disableUser() method.
+        try {
+            $this->client->adminDisableUser([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html
+     *
+     * @return Result
+     *
+     * @throws ClientException when there is an issue with authenticating a user.
+     */
     public function getUserByIdentifier(string $identifier): \ArrayAccess
     {
-        // TODO: Implement getUserByIdentifier() method.
+        try {
+            return $this->client->adminGetUser([
+                'UserPoolId' => $this->poolId,
+                'Username' => $identifier
+            ]);
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
     /**
-     * @throws \RuntimeException             Malformed JSON from JWK response.
-     * @throws \InvalidArgumentException     Used JWK Set is empty
-     * @throws \UnexpectedValueException     Used JWK Set was invalid
-     * @throws \DomainException              OpenSSL failure
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_GetUser.html
+     *
+     * @return Result
+     *
+     * @throws ClientException when there is an issue with getting a user.
      */
-    public function isValidToken(string $token): bool
+    public function getUserByAccessToken(string $token): \ArrayAccess
     {
-        // TODO: Implement isValidToken() method.
-    }
-
-    public function refreshToken(string $token, string $identifier): string
-    {
-        // TODO: Implement refreshToken() method.
-    }
-
-    public function getUserByToken(string $token): \ArrayAccess
-    {
-        // TODO: Implement getUserByToken() method.
+        try {
+            return $this->client->getUser([
+                'UserPoolId' => $this->poolId,
+                'AccessToken' => $token
+            ]);
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
     /**
-     * @return string[]
+     * @throws InvalidTokenException when the token provided is invalid and cannot be decoded.
      */
-    protected function getJwtWebKeys(): array
+    public function decodeToken(string $token): object
     {
-        if (!$this->jwtWebKeys) {
+        try {
+            $keySet = $this->getJwtWebKeys();
+
+            $jwt = JWT::decode($token, $keySet, ['RS256']);
+
+            # Additional checks per AWS requirements to verify tokens.
+            # https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
+            if (!isset($jwt->token_use) || !in_array($jwt->token_use, ['id', 'access'])) {
+                throw new InvalidTokenException('"token_use" invalid');
+            }
+
+            $expectedIss = sprintf('https://cognito-idp.%s.amazonaws.com/%s', $this->client->getRegion(), $this->poolId);
+            if (!isset($jwt->iss) || $jwt->iss !== $expectedIss) {
+                throw new InvalidTokenException('"iss" invalid');
+            }
+
+            # Only applied to Id tokens.
+            if ($jwt->token_use === 'id') {
+                if (!isset($jwt->aud) || $jwt->aud !== $this->clientId) {
+                    throw new InvalidTokenException('"aud" invalid');
+                }
+            }
+
+            return $jwt;
+        } catch (\Exception $e) {
+            throw new InvalidTokenException($e->getMessage(), (int) $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
+     *
+     * @return Result
+     *
+     * @throws ClientException when there was an issue with refreshing the user's token.
+     */
+    public function refreshTokens(string $refreshToken, string $identifier): \ArrayAccess
+    {
+        try {
+            return $this->client->adminInitiateAuth([
+                'AuthFlow' => 'REFRESH_TOKEN_AUTH',
+                'AuthParameters' => [
+                    'REFRESH_TOKEN' => $refreshToken,
+                    'SECRET_HASH' => $this->cognitoSecretHash($identifier),
+                ],
+                'ClientId' => $this->clientId,
+                'UserPoolId' => $this->poolId,
+            ]);
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
+    }
+
+    public function setJwkWebKeys(array $keys): void
+    {
+        $this->jwtWebKeys = $keys;
+    }
+
+    public function getJwtWebKeys(): array
+    {
+        if (empty($this->jwtWebKeys)) {
             $this->jwtWebKeys = $this->parseJwk($this->downloadJwtWebKeys());
         }
 
@@ -172,6 +305,9 @@ class Client implements ClientInterface, TokenInterface
         return JWK::parseKeySet($keys);
     }
 
+    /**
+     * @throws \JsonException
+     */
     protected function downloadJwtWebKeys(): array
     {
         $url = sprintf(
@@ -182,11 +318,14 @@ class Client implements ClientInterface, TokenInterface
 
         $json = file_get_contents($url);
 
-        // TODO: PHP >=7.3: use JSON_THROW_ON_ERROR flag.
+        if (false === $json) {
+            return [];
+        }
+
         $keys = json_decode($json, true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
-            throw new \RuntimeException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
+            throw new \JsonException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
         }
 
         return $keys;
@@ -213,7 +352,7 @@ class Client implements ClientInterface, TokenInterface
     }
 
     /**
-     * Format attributes from [Key => Value] to a AWS compatible ['Name', 'Value'] array.
+     * Format attributes from [Key => Value] to a AWS compatible [['Name', 'Value'], ...] array.
      */
     protected function formatAttributes(array $attributes): array
     {

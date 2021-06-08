@@ -10,7 +10,7 @@ use PHPUnit\Framework\Constraint\IsAnything;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
-class EnsureContractedExceptionsAreThrownTest extends TestCase
+class ContractExceptionsAreThrownInsteadTest extends TestCase
 {
     /**
      * @var CognitoIdentityProviderClient|MockObject
@@ -43,8 +43,8 @@ class EnsureContractedExceptionsAreThrownTest extends TestCase
         yield ['authenticate', ['IDENTIFIER', 'PASSWORD']];
         yield ['register', ['IDENTIFIER', 'PASSWORD', []]];
         yield ['changePassword', ['IDENTIFIER', 'NEW_PASSWORD']];
-        yield ['changeAttribute', ['KEY', 'VALUE']];
-        yield ['changeAttributes', [[]]];
+        yield ['changeAttribute', ['IDENTIFIER', 'KEY', 'VALUE']];
+        yield ['changeAttributes', ['IDENTIFIER', []]];
         yield ['enableUser', ['IDENTIFIER']];
         yield ['disableUser', ['IDENTIFIER']];
         yield ['getUserByIdentifier', ['IDENTIFIER']];
