@@ -121,14 +121,32 @@ class Client implements OAuthClientInterface
         }
     }
 
+    /**
+     * @throws ClientException when there is an issue with changing a user's attribute.
+     */
     public function changeAttribute(string $identifier, string $key, string $value): bool
     {
-        // TODO: Implement changeAttribute() method.
+        return $this->changeAttributes($identifier, [$key => $value]);
     }
 
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminUpdateUserAttributes.html
+     *
+     * @throws ClientException when there is an issue with changing a user's attributes.
+     */
     public function changeAttributes(string $identifier, array $attributes): bool
     {
-        // TODO: Implement changeAttributes() method.
+        try {
+            $this->client->adminUpdateUserAttributes([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+                'UserAttributes' => $this->formatAttributes($attributes)
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 
     public function enableUser(string $identifier): bool
