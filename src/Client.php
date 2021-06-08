@@ -112,7 +112,7 @@ class Client implements OAuthClientInterface
                 'Username' => $identifier,
                 'UserPoolId' => $this->poolId,
                 'Password' => $newPassword,
-                'Permanent' => true
+                'Permanent' => $permanent,
             ]);
 
             return true;
@@ -213,12 +213,12 @@ class Client implements OAuthClientInterface
      *
      * @throws ClientException when there is an issue with getting a user.
      */
-    public function getUserByAccessToken(string $accessToken): \ArrayAccess
+    public function getUserByAccessToken(string $token): \ArrayAccess
     {
         try {
             return $this->client->getUser([
                 'UserPoolId' => $this->poolId,
-                'AccessToken' => $accessToken
+                'AccessToken' => $token
             ]);
         } catch (AwsException $e) {
             throw new ClientException($e->getMessage(), (int) $e->getCode(), $e);
