@@ -12,9 +12,25 @@ jobs:
   snyk:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        stability: [prefer-lowest, prefer-stable]
+
+    name: Snyk - ${{ matrix.stability }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.3'
+          coverage: none
+          extensions: mbstring
+
+      - name: Install dependencies
+        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/php@master
@@ -22,7 +38,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --sarif-file-output=snyk.sarif
+          args: --sarif-file-output=snyk.sarif
 
       - name: Upload result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v1
