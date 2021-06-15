@@ -4,7 +4,7 @@ namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Dvsa\Authentication\Cognito\Client;
-use Dvsa\Contracts\Auth\InvalidTokenException;
+use Dvsa\Contracts\Auth\Exceptions\InvalidTokenException;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use PHPUnit\Framework\MockObject\MockObject;

@@ -5,7 +5,7 @@ namespace Dvsa\Authentication\Cognito\Tests;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
 use Dvsa\Authentication\Cognito\Client;
-use Dvsa\Contracts\Auth\ClientException;
+use Dvsa\Contracts\Auth\Exceptions\ClientException;
 use PHPUnit\Framework\Constraint\IsAnything;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;

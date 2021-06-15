@@ -8,7 +8,7 @@ use Aws\MockHandler;
 use Aws\Result;
 use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Contracts\Auth\AccessTokenInterface;
-use Dvsa\Contracts\Auth\ChallengeException;
+use Dvsa\Contracts\Auth\Exceptions\ChallengeException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
