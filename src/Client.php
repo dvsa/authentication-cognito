@@ -4,12 +4,12 @@ namespace Dvsa\Authentication\Cognito;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
-use Aws\Result;
 use Dvsa\Contracts\Auth\AccessTokenInterface;
 use Dvsa\Contracts\Auth\Exceptions\ChallengeException;
 use Dvsa\Contracts\Auth\Exceptions\ClientException;
 use Dvsa\Contracts\Auth\Exceptions\InvalidTokenException;
 use Dvsa\Contracts\Auth\OAuthClientInterface;
+use Dvsa\Contracts\Auth\ResourceOwnerInterface;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 
@@ -55,23 +55,22 @@ class Client implements OAuthClientInterface
     /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html
      *
-     * @return Result
-     *
      * @throws ClientException when there is an with creating user with the provided credentials.
      */
-    public function register(string $identifier, string $password, array $attributes = []): \ArrayAccess
+    public function register(string $identifier, string $password, array $attributes = []): ResourceOwnerInterface
     {
         $attributes = array_merge(['email_verified' => 'true'], $attributes);
 
         try {
-            return $this->client->adminCreateUser([
+            $response = $this->client->adminCreateUser([
                 'MessageAction' => 'SUPPRESS',
                 'TemporaryPassword' => $password,
                 'UserAttributes' => $this->formatAttributes($attributes),
                 'UserPoolId' => $this->poolId,
-                'Username' => $identifier
-
+                'Username' => $identifier,
             ]);
+
+            return CognitoUser::create($response->get('User'));
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
@@ -221,36 +220,17 @@ class Client implements OAuthClientInterface
     /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html
      *
-     * @return Result
-     *
      * @throws ClientException when there is an issue with authenticating a user.
      */
-    public function getUserByIdentifier(string $identifier): \ArrayAccess
+    public function getUserByIdentifier(string $identifier): ResourceOwnerInterface
     {
         try {
-            return $this->client->adminGetUser([
+            $response = $this->client->adminGetUser([
                 'UserPoolId' => $this->poolId,
                 'Username' => $identifier
             ]);
-        } catch (AwsException $e) {
-            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
-        }
-    }
 
-    /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_GetUser.html
-     *
-     * @return Result
-     *
-     * @throws ClientException when there is an issue with getting a user.
-     */
-    public function getUserByAccessToken(string $token): \ArrayAccess
-    {
-        try {
-            return $this->client->getUser([
-                'UserPoolId' => $this->poolId,
-                'AccessToken' => $token
-            ]);
+            return CognitoUser::create($response->toArray());
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
@@ -407,7 +387,7 @@ class Client implements OAuthClientInterface
     protected function handleAuthResponse(array $response): AccessTokenInterface
     {
         if (isset($response['AuthenticationResult'])) {
-            return AccessToken::createFromCognitoAuthResponse($response['AuthenticationResult']);
+            return AccessToken::create($response['AuthenticationResult']);
         }
 
         if (isset($response['ChallengeName'])) {

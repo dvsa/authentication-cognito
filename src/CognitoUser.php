@@ -110,4 +110,27 @@ class CognitoUser extends AbstractResourceOwner
     {
         return $this->get('picture');
     }
+
+    public static function create(array $result): self
+    {
+        $attributes = [
+            'username' => $result['Username'],
+            'status' => $result['UserStatus'],
+            'enabled' => $result['Enabled'],
+            'created_date' => $result['UserCreateDate'],
+            'last_modified_date' => $result['UserLastModifiedDate'],
+        ];
+
+        // Cognito returns a slightly different structure depending on API call.
+        // We will try the possible keys, and fallback to a blank array.
+        $userAttributes = ($result['UserAttributes'] ?? $result['Attributes'] ?? []);
+
+        // Attributes are in the format [['Name' => 'NAME_1', 'Value' => 'VALUE_1'], ...]
+        // Convert to a ['NAME_1' => 'VALUE_1', ...] pair.
+        foreach ($userAttributes as $attribute) {
+            $attributes[$attribute['Name']] = $attribute['Value'];
+        }
+
+        return new self($attributes);
+    }
 }

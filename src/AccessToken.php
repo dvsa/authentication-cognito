@@ -50,7 +50,7 @@ class AccessToken extends BaseAccessToken implements AccessTokenInterface
         return $parameters;
     }
 
-    public static function createFromCognitoAuthResponse(array $result): self
+    public static function create(array $result): self
     {
         $options = [];
 
