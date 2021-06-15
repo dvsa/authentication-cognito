@@ -53,7 +53,7 @@ X4nLcSbZtO0tcDGMfMpWF2JGYOEJQNetPozL/ICGVFyIO8yzXm8U
 
         $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
 
-        $this->client->setJwkWebKeys(
+        $this->client->setJwtWebKeys(
             JWK::parseKeySet([
                 'keys' => [[
                     "kid" => "1234example=",
