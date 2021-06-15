@@ -59,8 +59,6 @@ class Client implements OAuthClientInterface
      */
     public function register(string $identifier, string $password, array $attributes = []): ResourceOwnerInterface
     {
-        $attributes = array_merge(['email_verified' => 'true'], $attributes);
-
         try {
             $response = $this->client->adminCreateUser([
                 'MessageAction' => 'SUPPRESS',
