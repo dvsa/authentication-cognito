@@ -3,40 +3,54 @@
 namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
+use Aws\CommandInterface;
+use Aws\Credentials\Credentials;
+use Aws\MockHandler;
+use Aws\Result;
 use Dvsa\Authentication\Cognito\Client;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class AttributesAreProvidedInCorrectFormatTest extends TestCase
 {
     /**
-     * @var CognitoIdentityProviderClient|MockObject
+     * @var MockHandler
      */
-    protected $cognitoIdentityProviderClient;
+    protected $mockHandler;
+
+    /**
+     * @var Client
+     */
+    protected $client;
 
     protected function setUp(): void
     {
-        $this->cognitoIdentityProviderClient = $this->getMockBuilder(CognitoIdentityProviderClient::class)
-            ->disableOriginalConstructor()
-            ->addMethods(['adminUpdateUserAttributes'])
-            ->getMockForAbstractClass();
+        $this->mockHandler = new MockHandler();
+
+        $awsCredentials = new Credentials('AWS_ACCESS_KEY', 'AWS_SECRET_KEY');
+
+        $cognitoIdentityProviderClient = new CognitoIdentityProviderClient([
+            'credentials' => $awsCredentials,
+            'region'  => 'us-west-2',
+            'version' => 'latest',
+            'handler' => $this->mockHandler
+        ]);
+
+        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
     }
 
     /**
      * @dataProvider provideAttributeCombinations
      */
-    public function testAttributesFormattedCorrectly(array $expected, array $actual): void
+    public function testAttributesFormattedCorrectly(array $raw, array $expected): void
     {
-        $this->cognitoIdentityProviderClient
-            ->expects($this->once())
-            ->method('adminUpdateUserAttributes')
-            ->with($this->callback(function (array $arg) use ($actual) {
-                return isset($arg['UserAttributes']) && $arg['UserAttributes'] === $actual;
-            }));
+        // You can provide a function to invoke; here we throw a mock exception
+        $this->mockHandler->append(function (CommandInterface $cmd) use ($expected) {
+            $this->assertEquals($expected, $cmd['UserAttributes']);
 
-        $client = new Client($this->cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
+            return new Result();
+        });
 
-        $client->changeAttributes('USERNAME', $expected);
+        $this->client->changeAttributes('USERNAME', $raw);
     }
 
     public function provideAttributeCombinations(): \Generator

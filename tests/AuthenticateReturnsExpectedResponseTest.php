@@ -6,23 +6,24 @@ use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Credentials\Credentials;
 use Aws\MockHandler;
 use Aws\Result;
+use Dvsa\Authentication\Cognito\AccessToken;
 use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Contracts\Auth\AccessTokenInterface;
 use Dvsa\Contracts\Auth\Exceptions\ChallengeException;
-use PHPUnit\Framework\MockObject\MockObject;
+use Dvsa\Contracts\Auth\Exceptions\ClientException;
 use PHPUnit\Framework\TestCase;
 
 class AuthenticateReturnsExpectedResponseTest extends TestCase
 {
     /**
-     * @var CognitoIdentityProviderClient|MockObject
-     */
-    protected $cognitoIdentityProviderClient;
-
-    /**
      * @var MockHandler
      */
     protected $mockHandler;
+
+    /**
+     * @var Client
+     */
+    protected $client;
 
     protected function setUp(): void
     {
@@ -30,12 +31,14 @@ class AuthenticateReturnsExpectedResponseTest extends TestCase
 
         $awsCredentials = new Credentials('AWS_ACCESS_KEY', 'AWS_SECRET_KEY');
 
-        $this->cognitoIdentityProviderClient = new CognitoIdentityProviderClient([
+        $cognitoIdentityProviderClient = new CognitoIdentityProviderClient([
             'credentials' => $awsCredentials,
             'region'  => 'us-west-2',
             'version' => 'latest',
             'handler' => $this->mockHandler
         ]);
+
+        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
     }
 
     public function testAuthenticateActionWillReturnAccessToken(): void
@@ -52,14 +55,22 @@ class AuthenticateReturnsExpectedResponseTest extends TestCase
             ])
         );
 
-        $client = new Client($this->cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
+        // Mock the current time to a constant value to allow a reliable assertion.
+        $now = time();
+        AccessToken::setTimeNow($now);
 
-        $response = $client->authenticate('USERNAME', 'PASSWORD');
+        $response = $this->client->authenticate('USERNAME', 'PASSWORD');
 
         $this->assertInstanceOf(AccessTokenInterface::class, $response);
+
+        // Assert the correct values are set on the `$response` object.
+        $this->assertEquals('ACCESS_TOKEN', $response->getToken());
+        $this->assertEquals('REFRESH_TOKEN', $response->getRefreshToken());
+        $this->assertEquals('ID_TOKEN', $response->getIdToken());
+        $this->assertEquals($now + 60, $response->getExpires());
     }
 
-    public function testAuthenticateActionWillThrowExceptionWhenReturnedAChallenge(): void
+    public function testAuthenticateActionWillThrowChallengeExceptionWhenReturnedAChallenge(): void
     {
         $this->mockHandler->append(new Result([
             'ChallengeName' => 'CHALLENGE_NAME',
@@ -67,10 +78,19 @@ class AuthenticateReturnsExpectedResponseTest extends TestCase
             'Session' => 'SESSION',
         ]));
 
-        $client = new Client($this->cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
-
         $this->expectException(ChallengeException::class);
 
-        $client->authenticate('USERNAME', 'PASSWORD');
+        $this->client->authenticate('USERNAME', 'PASSWORD');
+    }
+
+    public function testAuthenticateActionWillThrowExceptionWhenMalformedResponse(): void
+    {
+        $this->mockHandler->append(new Result([
+            'UNKNOWN_RESPONSE'
+        ]));
+
+        $this->expectException(ClientException::class);
+
+        $this->client->authenticate('USERNAME', 'PASSWORD');
     }
 }
