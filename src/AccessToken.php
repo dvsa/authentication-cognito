@@ -13,7 +13,7 @@ use League\OAuth2\Client\Token\AccessToken as BaseAccessToken;
 class AccessToken extends BaseAccessToken implements AccessTokenInterface
 {
     /**
-     * @var string
+     * @var null|string
      */
     protected $idToken;
 
@@ -31,7 +31,7 @@ class AccessToken extends BaseAccessToken implements AccessTokenInterface
         }
     }
 
-    public function getIdToken(): string
+    public function getIdToken(): ?string
     {
         return $this->idToken;
     }
