@@ -68,7 +68,7 @@ class Client implements OAuthClientInterface
                 'Username' => $identifier,
             ]);
 
-            return CognitoUser::create($response->get('User'));
+            return CognitoUser::create(($response->get('User') ?? []));
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }

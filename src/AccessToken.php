@@ -9,6 +9,8 @@ use League\OAuth2\Client\Token\AccessToken as BaseAccessToken;
  * An extension to the AccessToken class to include an OIDC ID token.
  *
  * @see https://openid.net/specs/openid-connect-core-1_0.html
+ *
+ * @psalm-suppress PropertyNotSetInConstructor
  */
 class AccessToken extends BaseAccessToken implements AccessTokenInterface
 {
