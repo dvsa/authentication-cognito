@@ -16,6 +16,14 @@ use Firebase\JWT\JWT;
 class Client implements OAuthClientInterface
 {
     /**
+     * When checking nbf, iat or expiration times on tokens, we want to provide
+     * some extra leeway time to account for clock skew.
+     *
+     * @var int
+     */
+    public static $leeway = 0;
+
+    /**
      * @var CognitoIdentityProviderClient
      */
     protected $client;
@@ -235,20 +243,17 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @param  string  $token
-     * @param  int     $leeway  When checking nbf, iat or expiration times of tokens,
-     *                          we may want to provide some extra leeway time to
-     *                          account for clock skew.
+     * @param  string $token
      *
      * @return object the decoded token as an object.
      * @throws InvalidTokenException when the token provided is invalid and cannot be decoded.
      */
-    public function decodeToken(string $token, int $leeway = 0): object
+    public function decodeToken(string $token): object
     {
         try {
             $keySet = $this->getJwtWebKeys();
 
-            JWT::$leeway = $leeway;
+            JWT::$leeway = self::$leeway;
 
             $jwt = JWT::decode($token, $keySet, ['RS256']);
 
