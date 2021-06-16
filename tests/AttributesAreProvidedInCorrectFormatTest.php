@@ -64,6 +64,14 @@ class AttributesAreProvidedInCorrectFormatTest extends TestCase
         ];
 
         yield [
+            ['Key1' => false, 'Key2' => true],
+            [
+                ['Name' => 'Key1', 'Value' => 'false'],
+                ['Name' => 'Key2', 'Value' => 'true']
+            ],
+        ];
+
+        yield [
             [],
             []
         ];

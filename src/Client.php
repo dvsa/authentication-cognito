@@ -378,12 +378,26 @@ class Client implements OAuthClientInterface
 
         foreach ($attributes as $key => $value) {
             $userAttributes[] = [
-                'Name' => (string) $key,
-                'Value' => (string) $value,
+                'Name' => $key,
+                'Value' => $this->formatAttributeValue($value),
             ];
         }
 
         return $userAttributes;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return string
+     */
+    protected function formatAttributeValue($value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        return (string) $value;
     }
 
     /**
