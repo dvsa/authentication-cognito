@@ -235,12 +235,20 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * @param  string  $token
+     * @param  int     $leeway  When checking nbf, iat or expiration times of tokens,
+     *                          we may want to provide some extra leeway time to
+     *                          account for clock skew.
+     *
+     * @return object the decoded token as an object.
      * @throws InvalidTokenException when the token provided is invalid and cannot be decoded.
      */
-    public function decodeToken(string $token): object
+    public function decodeToken(string $token, int $leeway = 0): object
     {
         try {
             $keySet = $this->getJwtWebKeys();
+
+            JWT::$leeway = $leeway;
 
             $jwt = JWT::decode($token, $keySet, ['RS256']);
 
