@@ -3,23 +3,40 @@
 namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
+use Aws\CommandInterface;
+use Aws\Credentials\Credentials;
 use Aws\Exception\AwsException;
+use Aws\MockHandler;
 use Dvsa\Authentication\Cognito\Client;
-use Dvsa\Contracts\Auth\ClientException;
-use PHPUnit\Framework\Constraint\IsAnything;
-use PHPUnit\Framework\MockObject\MockObject;
+use Dvsa\Contracts\Auth\Exceptions\ClientException;
 use PHPUnit\Framework\TestCase;
 
 class ContractExceptionsAreThrownInsteadTest extends TestCase
 {
     /**
-     * @var CognitoIdentityProviderClient|MockObject
+     * @var MockHandler
      */
-    protected $cognitoIdentityProviderClient;
+    protected $mockHandler;
+
+    /**
+     * @var Client
+     */
+    protected $client;
 
     protected function setUp(): void
     {
-        $this->cognitoIdentityProviderClient = $this->createMock(CognitoIdentityProviderClient::class);
+        $this->mockHandler = new MockHandler();
+
+        $awsCredentials = new Credentials('AWS_ACCESS_KEY', 'AWS_SECRET_KEY');
+
+        $cognitoIdentityProviderClient = new CognitoIdentityProviderClient([
+            'credentials' => $awsCredentials,
+            'region'  => 'us-west-2',
+            'version' => 'latest',
+            'handler' => $this->mockHandler
+        ]);
+
+        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
     }
 
     /**
@@ -27,15 +44,13 @@ class ContractExceptionsAreThrownInsteadTest extends TestCase
      */
     public function testMethodsWillThrowContractedException(string $method, array $args = []): void
     {
-        $this->cognitoIdentityProviderClient
-            ->method(new IsAnything)
-            ->willThrowException($this->createMock(AwsException::class));
+        $this->mockHandler->append(function (CommandInterface $cmd) {
+            return new AwsException('Mock exception', $cmd);
+        });
 
         $this->expectException(ClientException::class);
 
-        $client = new Client($this->cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
-
-        $client->{$method}(...$args);
+        $this->client->{$method}(...$args);
     }
 
     public function provideAllClientInterfaceMethods(): \Generator

@@ -15,7 +15,8 @@
     "ext-json": "*",
     "aws/aws-sdk-php": "~3.183.7",
     "dvsa/contracts": "dev-main",
-    "firebase/php-jwt": "^5.2"
+    "firebase/php-jwt": "^5.2",
+    "league/oauth2-client": "^2.6"
   },
   "autoload": {
     "psr-4": {

@@ -4,15 +4,25 @@ namespace Dvsa\Authentication\Cognito;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
-use Aws\Result;
-use Dvsa\Contracts\Auth\ClientException;
-use Dvsa\Contracts\Auth\InvalidTokenException;
+use Dvsa\Contracts\Auth\AccessTokenInterface;
+use Dvsa\Contracts\Auth\Exceptions\ChallengeException;
+use Dvsa\Contracts\Auth\Exceptions\ClientException;
+use Dvsa\Contracts\Auth\Exceptions\InvalidTokenException;
 use Dvsa\Contracts\Auth\OAuthClientInterface;
+use Dvsa\Contracts\Auth\ResourceOwnerInterface;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 
 class Client implements OAuthClientInterface
 {
+    /**
+     * When checking nbf, iat or expiration times on tokens, we want to provide
+     * some extra leeway time to account for clock skew.
+     *
+     * @var int
+     */
+    public static $leeway = 0;
+
     /**
      * @var CognitoIdentityProviderClient
      */
@@ -51,23 +61,22 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @return Result
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html
      *
      * @throws ClientException when there is an with creating user with the provided credentials.
      */
-    public function register(string $identifier, string $password, array $attributes = []): \ArrayAccess
+    public function register(string $identifier, string $password, array $attributes = []): ResourceOwnerInterface
     {
-        $attributes = array_merge(['email_verified' => 'true'], $attributes);
-
         try {
-            return $this->client->adminCreateUser([
+            $response = $this->client->adminCreateUser([
                 'MessageAction' => 'SUPPRESS',
                 'TemporaryPassword' => $password,
                 'UserAttributes' => $this->formatAttributes($attributes),
                 'UserPoolId' => $this->poolId,
-                'Username' => $identifier
-
+                'Username' => $identifier,
             ]);
+
+            return CognitoUser::create(($response->get('User') ?? []));
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
@@ -76,14 +85,13 @@ class Client implements OAuthClientInterface
     /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
      *
-     * @return Result
-     *
+     * @throws ChallengeException when a challenge is returned for this user.
      * @throws ClientException when there is an issue with authenticating a user.
      */
-    public function authenticate(string $identifier, string $password): \ArrayAccess
+    public function authenticate(string $identifier, string $password): AccessTokenInterface
     {
         try {
-            return $this->client->adminInitiateAuth(
+            $response = $this->client->adminInitiateAuth(
                 [
                     'AuthFlow'       => 'ADMIN_USER_PASSWORD_AUTH',
                     'AuthParameters' => [
@@ -95,6 +103,34 @@ class Client implements OAuthClientInterface
                     'UserPoolId'     => $this->poolId,
                 ]
             );
+
+            return $this->handleAuthResponse($response->toArray());
+        } catch (AwsException $e) {
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminRespondToAuthChallenge.html
+     *
+     * @return \Dvsa\Contracts\Auth\AccessTokenInterface
+     *
+     * @throws ClientException when there is an issue with authenticating a user.
+     * @throws ChallengeException when a challenge is returned for this user.
+     */
+    public function responseToAuthChallenge(string $challengeName, array $challengeResponses, string $session): AccessTokenInterface
+    {
+        try {
+            $response = $this->client->adminRespondToAuthChallenge(
+                [
+                    'ChallengeName'      => $challengeName,
+                    'ChallengeResponses' => $challengeResponses,
+                    'ClientId'           => $this->clientId,
+                    'Session'            => $session,
+                ]
+            );
+
+            return $this->handleAuthResponse($response->toArray());
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
@@ -190,48 +226,34 @@ class Client implements OAuthClientInterface
     /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html
      *
-     * @return Result
-     *
      * @throws ClientException when there is an issue with authenticating a user.
      */
-    public function getUserByIdentifier(string $identifier): \ArrayAccess
+    public function getUserByIdentifier(string $identifier): ResourceOwnerInterface
     {
         try {
-            return $this->client->adminGetUser([
+            $response = $this->client->adminGetUser([
                 'UserPoolId' => $this->poolId,
                 'Username' => $identifier
             ]);
+
+            return CognitoUser::create($response->toArray());
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_GetUser.html
+     * @param  string $token
      *
-     * @return Result
-     *
-     * @throws ClientException when there is an issue with getting a user.
-     */
-    public function getUserByAccessToken(string $token): \ArrayAccess
-    {
-        try {
-            return $this->client->getUser([
-                'UserPoolId' => $this->poolId,
-                'AccessToken' => $token
-            ]);
-        } catch (AwsException $e) {
-            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
-        }
-    }
-
-    /**
+     * @return object the decoded token as an object.
      * @throws InvalidTokenException when the token provided is invalid and cannot be decoded.
      */
     public function decodeToken(string $token): object
     {
         try {
             $keySet = $this->getJwtWebKeys();
+
+            JWT::$leeway = self::$leeway;
 
             $jwt = JWT::decode($token, $keySet, ['RS256']);
 
@@ -262,14 +284,13 @@ class Client implements OAuthClientInterface
     /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
      *
-     * @return Result
-     *
+     * @throws ChallengeException when a challenge is returned for this user.
      * @throws ClientException when there was an issue with refreshing the user's token.
      */
-    public function refreshTokens(string $refreshToken, string $identifier): \ArrayAccess
+    public function refreshTokens(string $refreshToken, string $identifier): AccessTokenInterface
     {
         try {
-            return $this->client->adminInitiateAuth([
+            $response = $this->client->adminInitiateAuth([
                 'AuthFlow' => 'REFRESH_TOKEN_AUTH',
                 'AuthParameters' => [
                     'REFRESH_TOKEN' => $refreshToken,
@@ -278,12 +299,14 @@ class Client implements OAuthClientInterface
                 'ClientId' => $this->clientId,
                 'UserPoolId' => $this->poolId,
             ]);
+
+            return $this->handleAuthResponse($response->toArray());
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
     }
 
-    public function setJwkWebKeys(array $keys): void
+    public function setJwtWebKeys(array $keys): void
     {
         $this->jwtWebKeys = $keys;
     }
@@ -361,10 +384,44 @@ class Client implements OAuthClientInterface
         foreach ($attributes as $key => $value) {
             $userAttributes[] = [
                 'Name' => $key,
-                'Value' => $value,
+                'Value' => $this->formatAttributeValue($value),
             ];
         }
 
         return $userAttributes;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return string
+     */
+    protected function formatAttributeValue($value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * @throws ClientException when an auth response format is malformed.
+     * @throws ChallengeException when an auth response returns a challenge.
+     */
+    protected function handleAuthResponse(array $response): AccessTokenInterface
+    {
+        if (isset($response['AuthenticationResult'])) {
+            return AccessToken::create($response['AuthenticationResult']);
+        }
+
+        if (isset($response['ChallengeName'])) {
+            throw (new ChallengeException())
+                ->setChallengeName($response['ChallengeName'])
+                ->setParameters($response['ChallengeParameters'])
+                ->setSession($response['Session']);
+        }
+
+        throw new ClientException('Invalid AdminInitiateAuth response');
     }
 }

@@ -4,7 +4,7 @@ namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Dvsa\Authentication\Cognito\Client;
-use Dvsa\Contracts\Auth\InvalidTokenException;
+use Dvsa\Contracts\Auth\Exceptions\InvalidTokenException;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -12,7 +12,8 @@ use PHPUnit\Framework\TestCase;
 
 class TokenValidityTest extends TestCase
 {
-    const PRIVATE_KEY = "-----BEGIN RSA PRIVATE KEY-----
+    const PRIVATE_KEY = <<<EOF
+-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEA0Ttga33B1yX4w77NbpKyNYDNSVCo8j+RlZaZ9tI+KfkV1d+t
 fsvI9ZPAheP11FoN52ceBaY5ltelHW+IKwCfyT0orLdsxLgowaXki9woF1Azvcg2
 JVxQLv9aVjjAvy3CZFIG/EeN7J3nsyCXGnu1yMEbnvkWxA88//Q6HQ2K9wqfApkQ
@@ -38,7 +39,8 @@ SEnLoTq9si1rN624dRUCKW25m4Py4MlYvm/9xovGJkSqZOhCLoJZ05JK8QWb/pKH
 Oi6lAoGBAOUN6ICpMQvzMGPgIbgS0H/gvRTnpAEs59vdgrkhlCII4tzfgvBQlVae
 hRcdM6GTMq5pekBPKu45eanIzwVc88P6coT4qiWYKk2jYoLBa0UV3xEAuqBMymrj
 X4nLcSbZtO0tcDGMfMpWF2JGYOEJQNetPozL/ICGVFyIO8yzXm8U
------END RSA PRIVATE KEY-----";
+-----END RSA PRIVATE KEY-----
+EOF;
 
     /**
      * @var Client|MockObject
@@ -53,7 +55,7 @@ X4nLcSbZtO0tcDGMfMpWF2JGYOEJQNetPozL/ICGVFyIO8yzXm8U
 
         $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
 
-        $this->client->setJwkWebKeys(
+        $this->client->setJwtWebKeys(
             JWK::parseKeySet([
                 'keys' => [[
                     "kid" => "1234example=",
