@@ -243,41 +243,46 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @param  string $token
-     *
-     * @return object the decoded token as an object.
      * @throws InvalidTokenException when the token provided is invalid and cannot be decoded.
      */
-    public function decodeToken(string $token): object
+    public function decodeToken(string $token): array
     {
         try {
             $keySet = $this->getJwtWebKeys();
 
             JWT::$leeway = self::$leeway;
 
-            $jwt = JWT::decode($token, $keySet, ['RS256']);
+            $tokenClaims = (array) JWT::decode($token, $keySet, ['RS256']);
 
-            # Additional checks per AWS requirements to verify tokens.
-            # https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
-            if (!isset($jwt->token_use) || !in_array($jwt->token_use, ['id', 'access'])) {
-                throw new InvalidTokenException('"token_use" invalid');
-            }
+            $this->validateTokenClaims($tokenClaims);
 
-            $expectedIss = sprintf('https://cognito-idp.%s.amazonaws.com/%s', $this->client->getRegion(), $this->poolId);
-            if (!isset($jwt->iss) || $jwt->iss !== $expectedIss) {
-                throw new InvalidTokenException('"iss" invalid');
-            }
-
-            # Only applied to Id tokens.
-            if ($jwt->token_use === 'id') {
-                if (!isset($jwt->aud) || $jwt->aud !== $this->clientId) {
-                    throw new InvalidTokenException('"aud" invalid');
-                }
-            }
-
-            return $jwt;
+            return $tokenClaims;
         } catch (\Exception $e) {
             throw new InvalidTokenException($e->getMessage(), (int) $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * @throws InvalidTokenException when claims aren't valid and not to be trusted.
+     */
+    public function validateTokenClaims(array $tokenClaims): void
+    {
+        # Additional checks per AWS requirements to verify tokens.
+        # https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
+        if (!isset($tokenClaims['token_use']) || !in_array($tokenClaims['token_use'], ['id', 'access'])) {
+            throw new InvalidTokenException('"token_use" invalid');
+        }
+
+        $expectedIss = sprintf('https://cognito-idp.%s.amazonaws.com/%s', $this->client->getRegion(), $this->poolId);
+        if (!isset($tokenClaims['iss']) || $tokenClaims['iss'] !== $expectedIss) {
+            throw new InvalidTokenException('"iss" invalid');
+        }
+
+        # Only applied to Id tokens.
+        if ($tokenClaims['token_use'] === 'id') {
+            if (!isset($tokenClaims['aud']) || $tokenClaims['aud'] !== $this->clientId) {
+                throw new InvalidTokenException('"aud" invalid');
+            }
         }
     }
 
