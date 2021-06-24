@@ -287,6 +287,29 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * Requests and returns the resource owner of given access token.
+     *
+     * @throws InvalidTokenException when the ID token is invalid.
+     */
+    public function getResourceOwner(AccessTokenInterface $token): ResourceOwnerInterface
+    {
+        // If the ID token is not null, use to build the resource owner.
+        // Otherwise, use the claims from the access token.
+        if ($idToken = $token->getIdToken()) {
+            $tokenClaims = $this->decodeToken($idToken);
+        } else {
+            $tokenClaims = $this->decodeToken($token->getToken());
+        }
+
+        return $this->createResourceOwner($tokenClaims, $token);
+    }
+
+    protected function createResourceOwner(array $claims, AccessTokenInterface $token): ResourceOwnerInterface
+    {
+        return new CognitoUser($claims);
+    }
+
+    /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
      *
      * @throws ChallengeException when a challenge is returned for this user.
