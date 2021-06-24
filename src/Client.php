@@ -287,6 +287,29 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * Requests and returns the resource owner of given access token.
+     *
+     * @throws InvalidTokenException when the ID token is invalid.
+     */
+    public function getResourceOwner(AccessTokenInterface $token): ResourceOwnerInterface
+    {
+        // If the ID token is not null, use to build the resource owner.
+        // Otherwise, use the claims from the access token.
+        if ($idToken = $token->getIdToken()) {
+            $tokenClaims = $this->decodeToken($idToken);
+        } else {
+            $tokenClaims = $this->decodeToken($token->getToken());
+        }
+
+        return $this->createResourceOwner($tokenClaims, $token);
+    }
+
+    protected function createResourceOwner(array $claims, AccessTokenInterface $token): ResourceOwnerInterface
+    {
+        return new CognitoUser($claims);
+    }
+
+    /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
      *
      * @throws ChallengeException when a challenge is returned for this user.
@@ -304,6 +327,14 @@ class Client implements OAuthClientInterface
                 'ClientId' => $this->clientId,
                 'UserPoolId' => $this->poolId,
             ]);
+
+            // The response does not contain the refresh token as part of the response.
+            // Add the old refresh token here.
+            if (isset($response['AuthenticationResult'])) {
+                if (!isset($response['AuthenticationResult']['RefreshToken'])) {
+                    $response['AuthenticationResult']['RefreshToken'] = $refreshToken;
+                }
+            }
 
             return $this->handleAuthResponse($response->toArray());
         } catch (AwsException $e) {
