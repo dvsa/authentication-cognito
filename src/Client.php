@@ -328,6 +328,14 @@ class Client implements OAuthClientInterface
                 'UserPoolId' => $this->poolId,
             ]);
 
+            // The response does not contain the refresh token as part of the response.
+            // Add the old refresh token here.
+            if (isset($response['AuthenticationResult'])) {
+                if (!isset($response['AuthenticationResult']['RefreshToken'])) {
+                    $response['AuthenticationResult']['RefreshToken'] = $refreshToken;
+                }
+            }
+
             return $this->handleAuthResponse($response->toArray());
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
