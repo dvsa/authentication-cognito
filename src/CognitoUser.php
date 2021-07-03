@@ -13,7 +13,7 @@ class CognitoUser extends AbstractResourceOwner
 {
     public function getId(): string
     {
-        return $this->get('sub');
+        return $this->get('username', $this->get('cognito:username'));
     }
 
     public function getAddress(): ?string
