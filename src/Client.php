@@ -61,9 +61,9 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html
-     *
      * @inheritDoc
+     *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html
      */
     public function register(string $identifier, string $password, array $attributes = []): ResourceOwnerInterface
     {
@@ -83,9 +83,9 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
-     *
      * @inheritDoc
+     *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
      */
     public function authenticate(string $identifier, string $password): AccessTokenInterface
     {
@@ -112,8 +112,6 @@ class Client implements OAuthClientInterface
     /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminRespondToAuthChallenge.html
      *
-     * @return \Dvsa\Contracts\Auth\AccessTokenInterface
-     *
      * @throws ClientException when there is an issue with authenticating a user.
      * @throws ChallengeException when a challenge is returned for this user.
      */
@@ -136,9 +134,9 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminSetUserPassword.html
-     *
      * @inheritDoc
+     *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminSetUserPassword.html
      */
     public function changePassword(string $identifier, string $newPassword, bool $permanent = true): bool
     {
@@ -165,9 +163,9 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminUpdateUserAttributes.html
-     *
      * @inheritDoc
+     *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminUpdateUserAttributes.html
      */
     public function changeAttributes(string $identifier, array $attributes): bool
     {
@@ -185,9 +183,9 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminEnableUser.html
-     *
      * @inheritDoc
+     *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminEnableUser.html
      */
     public function enableUser(string $identifier): bool
     {
@@ -204,9 +202,9 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminDisableUser.html
-     *
      * @inheritDoc
+     *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminDisableUser.html
      */
     public function disableUser(string $identifier): bool
     {
@@ -223,9 +221,9 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html
-     *
      * @inheritDoc
+     *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html
      */
     public function getUserByIdentifier(string $identifier): ResourceOwnerInterface
     {
@@ -307,9 +305,9 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
-     *
      * @inheritDoc
+     *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminInitiateAuth.html
      */
     public function refreshTokens(string $refreshToken, string $identifier): AccessTokenInterface
     {
