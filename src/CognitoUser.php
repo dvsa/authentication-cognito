@@ -111,7 +111,7 @@ class CognitoUser extends AbstractResourceOwner
         return $this->get('picture');
     }
 
-    public static function create(array $result): self
+    public static function prepareAwsResponse(array $result): array
     {
         $attributes = [
             'username' => $result['Username'],
@@ -131,6 +131,6 @@ class CognitoUser extends AbstractResourceOwner
             $attributes[$attribute['Name']] = $attribute['Value'];
         }
 
-        return new self($attributes);
+        return $attributes;
     }
 }

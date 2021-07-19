@@ -5,6 +5,7 @@ namespace Dvsa\Authentication\Cognito;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
 use Dvsa\Contracts\Auth\AccessTokenInterface;
+use Dvsa\Contracts\Auth\CreatesResourceOwners;
 use Dvsa\Contracts\Auth\Exceptions\ChallengeException;
 use Dvsa\Contracts\Auth\Exceptions\ClientException;
 use Dvsa\Contracts\Auth\Exceptions\InvalidTokenException;
@@ -15,6 +16,8 @@ use Firebase\JWT\JWT;
 
 class Client implements OAuthClientInterface
 {
+    use CreatesResourceOwners;
+
     /**
      * When checking nbf, iat or expiration times on tokens, we want to provide
      * some extra leeway time to account for clock skew.
@@ -58,6 +61,8 @@ class Client implements OAuthClientInterface
         $this->clientId = $clientId;
         $this->clientSecret = $clientSecret;
         $this->poolId = $poolId;
+
+        $this->resourceOwnerClass = CognitoUser::class;
     }
 
     /**
@@ -76,7 +81,9 @@ class Client implements OAuthClientInterface
                 'Username' => $identifier,
             ]);
 
-            return CognitoUser::create(($response->get('User') ?? []));
+            $attributes = CognitoUser::prepareAwsResponse(($response->get('User') ?? []));
+
+            return $this->createResourceOwner($attributes);
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
@@ -233,7 +240,9 @@ class Client implements OAuthClientInterface
                 'Username' => $identifier
             ]);
 
-            return CognitoUser::create($response->toArray());
+            $attributes = CognitoUser::prepareAwsResponse($response->toArray());
+
+            return $this->createResourceOwner($attributes);
         } catch (AwsException $e) {
             throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
         }
@@ -296,12 +305,7 @@ class Client implements OAuthClientInterface
             $tokenClaims = $this->decodeToken($token->getToken());
         }
 
-        return $this->createResourceOwner($tokenClaims, $token);
-    }
-
-    protected function createResourceOwner(array $claims, AccessTokenInterface $token): ResourceOwnerInterface
-    {
-        return new CognitoUser($claims);
+        return $this->createResourceOwner($tokenClaims);
     }
 
     /**
