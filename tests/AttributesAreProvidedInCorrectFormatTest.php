@@ -71,6 +71,15 @@ class AttributesAreProvidedInCorrectFormatTest extends TestCase
             ],
         ];
 
+        $date = new \DateTime();
+
+        yield [
+            ['Key1' => $date],
+            [
+                ['Name' => 'Key1', 'Value' => $date->format('Y-m-d H:i:s e')],
+            ],
+        ];
+
         yield [
             [],
             []
