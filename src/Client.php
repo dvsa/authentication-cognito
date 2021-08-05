@@ -436,6 +436,10 @@ class Client implements OAuthClientInterface
             return $value ? 'true' : 'false';
         }
 
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s e');
+        }
+
         return (string) $value;
     }
 
