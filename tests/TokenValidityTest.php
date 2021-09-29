@@ -63,11 +63,7 @@ EOF;
 
         $cognitoIdentityProviderMock->method('getRegion')->willReturn('eu-west-2');
 
-        $this->mockHttpHandler = new MockHttpHandler();
-        $handlerStack = HandlerStack::create($this->mockHttpHandler);
-        $httpClient = new HttpClient(['handler' => $handlerStack]);
-
-        $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID', $httpClient);
+        $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
 
         $this->client->setJwtWebKeys(
             JWK::parseKeySet([
@@ -157,7 +153,13 @@ EOF;
     public function testDecodeWillThrowExceptionWhenUnableToFetchJwtWebKeys()
     {
         $this->client->setJwtWebKeys([]);
-        $this->mockHttpHandler->append(new RequestException('Error Communicating with Server', new Request('GET', 'test')));
+
+        $mockHttpHandler = new MockHttpHandler();
+        $handlerStack = HandlerStack::create($this->mockHttpHandler);
+        $mockHttpHandler->append(new RequestException('Error Communicating with Server', new Request('GET', 'test')));
+        $httpClient = new HttpClient(['handler' => $handlerStack]);
+
+        $this->client->setHttpClient($httpClient);
 
         $this->expectException(InvalidTokenException::class);
         $this->expectErrorMessage('Unable to fetch JWT web keys');

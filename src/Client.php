@@ -55,22 +55,20 @@ class Client implements OAuthClientInterface
     protected $jwtWebKeys = [];
 
     /**
-     * @var HttpClient
+     * @var HttpClient|null
      */
-    private $httpClient;
+    private $httpClient = null;
 
     public function __construct(
         CognitoIdentityProviderClient $cognitoClient,
         string $clientId,
         string $clientSecret,
-        string $poolId,
-        HttpClient $httpClient
+        string $poolId
     ) {
         $this->cognitoClient = $cognitoClient;
         $this->clientId = $clientId;
         $this->clientSecret = $clientSecret;
         $this->poolId = $poolId;
-        $this->httpClient = $httpClient;
 
         $this->resourceOwnerClass = CognitoUser::class;
     }
@@ -365,6 +363,25 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * @param HttpClient $httpClient
+     */
+    public function setHttpClient(HttpClient $httpClient): void
+    {
+        $this->httpClient = $httpClient;
+    }
+
+    /**
+     * @return HttpClient
+     */
+    public function getHttpClient(): HttpClient
+    {
+        if (is_null($this->httpClient)) {
+            $this->httpClient = new HttpClient();
+        }
+        return $this->httpClient;
+    }
+
+    /**
      * @return string[]
      */
     protected function parseJwk(array $keys): array
@@ -384,7 +401,7 @@ class Client implements OAuthClientInterface
         );
 
         try {
-            $response = $this->httpClient->get($url);
+            $response = $this->getHttpClient()->get($url);
         } catch (GuzzleException $e) {
             throw new \Exception(sprintf('Unable to fetch JWT web keys: %s', $e->getMessage()), (int)$e->getCode(), $e);
         }
