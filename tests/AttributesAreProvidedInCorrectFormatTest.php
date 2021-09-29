@@ -8,6 +8,9 @@ use Aws\Credentials\Credentials;
 use Aws\MockHandler;
 use Aws\Result;
 use Dvsa\Authentication\Cognito\Client;
+use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
+use GuzzleHttp\HandlerStack;
 use PHPUnit\Framework\TestCase;
 
 class AttributesAreProvidedInCorrectFormatTest extends TestCase
@@ -35,7 +38,10 @@ class AttributesAreProvidedInCorrectFormatTest extends TestCase
             'handler' => $this->mockHandler
         ]);
 
-        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
+        $handlerStack = HandlerStack::create(new MockHttpHandler());
+        $httpClient = new HttpClient(['handler' => $handlerStack]);
+
+        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID', $httpClient);
     }
 
     /**

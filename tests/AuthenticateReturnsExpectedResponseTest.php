@@ -11,6 +11,9 @@ use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Contracts\Auth\AccessTokenInterface;
 use Dvsa\Contracts\Auth\Exceptions\ChallengeException;
 use Dvsa\Contracts\Auth\Exceptions\ClientException;
+use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
+use GuzzleHttp\HandlerStack;
 use PHPUnit\Framework\TestCase;
 
 class AuthenticateReturnsExpectedResponseTest extends TestCase
@@ -38,7 +41,10 @@ class AuthenticateReturnsExpectedResponseTest extends TestCase
             'handler' => $this->mockHandler
         ]);
 
-        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
+        $handlerStack = HandlerStack::create(new MockHttpHandler());
+        $httpClient = new HttpClient(['handler' => $handlerStack]);
+
+        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID', $httpClient);
     }
 
     public function testAuthenticateActionWillReturnAccessToken(): void

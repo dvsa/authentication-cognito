@@ -7,6 +7,11 @@ use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Contracts\Auth\Exceptions\InvalidTokenException;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -47,13 +52,22 @@ EOF;
      */
     protected $client;
 
+    /**
+     * @var MockHttpHandler
+     */
+    protected $mockHttpHandler;
+
     protected function setUp(): void
     {
         $cognitoIdentityProviderMock = $this->createMock(CognitoIdentityProviderClient::class);
 
         $cognitoIdentityProviderMock->method('getRegion')->willReturn('eu-west-2');
 
-        $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
+        $this->mockHttpHandler = new MockHttpHandler();
+        $handlerStack = HandlerStack::create($this->mockHttpHandler);
+        $httpClient = new HttpClient(['handler' => $handlerStack]);
+
+        $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID', $httpClient);
 
         $this->client->setJwtWebKeys(
             JWK::parseKeySet([
@@ -138,5 +152,16 @@ EOF;
         $this->expectExceptionMessage('"aud" invalid');
 
         $this->client->decodeToken($encoded);
+    }
+
+    public function testDecodeWillThrowExceptionWhenUnableToFetchJwtWebKeys()
+    {
+        $this->client->setJwtWebKeys([]);
+        $this->mockHttpHandler->append(new RequestException('Error Communicating with Server', new Request('GET', 'test')));
+
+        $this->expectException(InvalidTokenException::class);
+        $this->expectErrorMessage('Unable to fetch JWT web keys');
+
+        $this->client->decodeToken('');
     }
 }

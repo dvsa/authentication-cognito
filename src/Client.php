@@ -13,6 +13,9 @@ use Dvsa\Contracts\Auth\OAuthClientInterface;
 use Dvsa\Contracts\Auth\ResourceOwnerInterface;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Psr7\Response;
 
 class Client implements OAuthClientInterface
 {
@@ -29,7 +32,7 @@ class Client implements OAuthClientInterface
     /**
      * @var CognitoIdentityProviderClient
      */
-    protected $client;
+    protected $cognitoClient;
 
     /**
      * @var string
@@ -51,16 +54,23 @@ class Client implements OAuthClientInterface
      */
     protected $jwtWebKeys = [];
 
+    /**
+     * @var HttpClient
+     */
+    private $httpClient;
+
     public function __construct(
-        CognitoIdentityProviderClient $client,
+        CognitoIdentityProviderClient $cognitoClient,
         string $clientId,
         string $clientSecret,
-        string $poolId
+        string $poolId,
+        HttpClient $httpClient
     ) {
-        $this->client = $client;
+        $this->cognitoClient = $cognitoClient;
         $this->clientId = $clientId;
         $this->clientSecret = $clientSecret;
         $this->poolId = $poolId;
+        $this->httpClient = $httpClient;
 
         $this->resourceOwnerClass = CognitoUser::class;
     }
@@ -73,7 +83,7 @@ class Client implements OAuthClientInterface
     public function register(string $identifier, string $password, array $attributes = []): ResourceOwnerInterface
     {
         try {
-            $response = $this->client->adminCreateUser([
+            $response = $this->cognitoClient->adminCreateUser([
                 'MessageAction' => 'SUPPRESS',
                 'TemporaryPassword' => $password,
                 'UserAttributes' => $this->formatAttributes($attributes),
@@ -97,7 +107,7 @@ class Client implements OAuthClientInterface
     public function authenticate(string $identifier, string $password): AccessTokenInterface
     {
         try {
-            $response = $this->client->adminInitiateAuth(
+            $response = $this->cognitoClient->adminInitiateAuth(
                 [
                     'AuthFlow'       => 'ADMIN_USER_PASSWORD_AUTH',
                     'AuthParameters' => [
@@ -125,7 +135,7 @@ class Client implements OAuthClientInterface
     public function responseToAuthChallenge(string $challengeName, array $challengeResponses, string $session): AccessTokenInterface
     {
         try {
-            $response = $this->client->adminRespondToAuthChallenge(
+            $response = $this->cognitoClient->adminRespondToAuthChallenge(
                 [
                     'ChallengeName'      => $challengeName,
                     'ChallengeResponses' => $challengeResponses,
@@ -148,7 +158,7 @@ class Client implements OAuthClientInterface
     public function changePassword(string $identifier, string $newPassword, bool $permanent = true): bool
     {
         try {
-            $this->client->adminSetUserPassword([
+            $this->cognitoClient->adminSetUserPassword([
                 'Username' => $identifier,
                 'UserPoolId' => $this->poolId,
                 'Password' => $newPassword,
@@ -177,7 +187,7 @@ class Client implements OAuthClientInterface
     public function changeAttributes(string $identifier, array $attributes): bool
     {
         try {
-            $this->client->adminUpdateUserAttributes([
+            $this->cognitoClient->adminUpdateUserAttributes([
                 'Username' => $identifier,
                 'UserPoolId' => $this->poolId,
                 'UserAttributes' => $this->formatAttributes($attributes)
@@ -197,7 +207,7 @@ class Client implements OAuthClientInterface
     public function enableUser(string $identifier): bool
     {
         try {
-            $this->client->adminEnableUser([
+            $this->cognitoClient->adminEnableUser([
                 'Username' => $identifier,
                 'UserPoolId' => $this->poolId,
             ]);
@@ -216,7 +226,7 @@ class Client implements OAuthClientInterface
     public function disableUser(string $identifier): bool
     {
         try {
-            $this->client->adminDisableUser([
+            $this->cognitoClient->adminDisableUser([
                 'Username' => $identifier,
                 'UserPoolId' => $this->poolId,
             ]);
@@ -235,7 +245,7 @@ class Client implements OAuthClientInterface
     public function getUserByIdentifier(string $identifier): ResourceOwnerInterface
     {
         try {
-            $response = $this->client->adminGetUser([
+            $response = $this->cognitoClient->adminGetUser([
                 'UserPoolId' => $this->poolId,
                 'Username' => $identifier
             ]);
@@ -279,7 +289,7 @@ class Client implements OAuthClientInterface
             throw new InvalidTokenException('"token_use" invalid');
         }
 
-        $expectedIss = sprintf('https://cognito-idp.%s.amazonaws.com/%s', $this->client->getRegion(), $this->poolId);
+        $expectedIss = sprintf('https://cognito-idp.%s.amazonaws.com/%s', $this->cognitoClient->getRegion(), $this->poolId);
         if (!isset($tokenClaims['iss']) || $tokenClaims['iss'] !== $expectedIss) {
             throw new InvalidTokenException('"iss" invalid');
         }
@@ -316,7 +326,7 @@ class Client implements OAuthClientInterface
     public function refreshTokens(string $refreshToken, string $identifier): AccessTokenInterface
     {
         try {
-            $response = $this->client->adminInitiateAuth([
+            $response = $this->cognitoClient->adminInitiateAuth([
                 'AuthFlow' => 'REFRESH_TOKEN_AUTH',
                 'AuthParameters' => [
                     'REFRESH_TOKEN' => $refreshToken,
@@ -369,17 +379,26 @@ class Client implements OAuthClientInterface
     {
         $url = sprintf(
             'https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json',
-            $this->client->getRegion(),
+            $this->cognitoClient->getRegion(),
             $this->poolId
         );
 
-        $json = file_get_contents($url);
+        try {
+            $response = $this->httpClient->get($url);
+        } catch (GuzzleException $e) {
+            throw new \Exception(sprintf('Unable to fetch JWT web keys: %s', $e->getMessage()), (int)$e->getCode(), $e);
+        }
 
-        if (false === $json) {
+        if ($response->getStatusCode() !== 200) {
+            throw new \Exception(sprintf('Unable to fetch JWT web keys. Status code %d', $response->getStatusCode()));
+        }
+
+        $body = $response->getBody()->getContents();
+        if (empty($body)) {
             return [];
         }
 
-        $keys = json_decode($json, true);
+        $keys = json_decode($body, true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
             throw new \JsonException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
