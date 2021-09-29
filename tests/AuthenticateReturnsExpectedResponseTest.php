@@ -41,10 +41,11 @@ class AuthenticateReturnsExpectedResponseTest extends TestCase
             'handler' => $this->mockHandler
         ]);
 
+        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
+
         $handlerStack = HandlerStack::create(new MockHttpHandler());
         $httpClient = new HttpClient(['handler' => $handlerStack]);
-
-        $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID', $httpClient);
+        $this->client->setHttpClient($httpClient);
     }
 
     public function testAuthenticateActionWillReturnAccessToken(): void
