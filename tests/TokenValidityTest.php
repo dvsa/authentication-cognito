@@ -7,6 +7,12 @@ use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Contracts\Auth\Exceptions\InvalidTokenException;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -46,6 +52,11 @@ EOF;
      * @var Client|MockObject
      */
     protected $client;
+
+    /**
+     * @var MockHttpHandler
+     */
+    protected $mockHttpHandler;
 
     protected function setUp(): void
     {
@@ -138,5 +149,23 @@ EOF;
         $this->expectExceptionMessage('"aud" invalid');
 
         $this->client->decodeToken($encoded);
+    }
+
+    public function testDecodeWillThrowExceptionWhenUnableToFetchJwtWebKeys(): void
+    {
+        $this->client->setJwtWebKeys([]);
+
+        $mockHttpHandler = new MockHttpHandler();
+        $exceptionMessage = 'Error Communicating with Server';
+        $mockHttpHandler->append(new RequestException($exceptionMessage, new Request('GET', 'test')));
+        $handlerStack = HandlerStack::create($mockHttpHandler);
+        $httpClient = new HttpClient(['handler' => $handlerStack]);
+
+        $this->client->setHttpClient($httpClient);
+
+        $this->expectException(InvalidTokenException::class);
+        $this->expectErrorMessage(sprintf('Unable to fetch JWT web keys: %s', $exceptionMessage));
+
+        $this->client->decodeToken('');
     }
 }

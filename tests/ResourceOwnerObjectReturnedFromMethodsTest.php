@@ -8,6 +8,9 @@ use Aws\MockHandler;
 use Aws\Result;
 use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Authentication\Cognito\CognitoUser;
+use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
+use GuzzleHttp\HandlerStack;
 use PHPUnit\Framework\TestCase;
 
 class ResourceOwnerObjectReturnedFromMethodsTest extends TestCase
@@ -40,6 +43,10 @@ class ResourceOwnerObjectReturnedFromMethodsTest extends TestCase
         );
 
         $this->client = new Client($cognitoIdentityProviderClient, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
+
+        $handlerStack = HandlerStack::create(new MockHttpHandler());
+        $httpClient = new HttpClient(['handler' => $handlerStack]);
+        $this->client->setHttpClient($httpClient);
     }
 
     public function testGetUserByIdentifierReturnsResourceOwnerObject(): void

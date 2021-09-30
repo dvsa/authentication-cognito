@@ -16,6 +16,7 @@
     "aws/aws-sdk-php": "^3.183.7",
     "dvsa/contracts": "^1.1",
     "firebase/php-jwt": "^5.2",
+    "guzzlehttp/guzzle": "^6.0 || ^7.0",
     "league/oauth2-client": "^2.6"
   },
   "autoload": {
