@@ -12,6 +12,7 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -150,19 +151,20 @@ EOF;
         $this->client->decodeToken($encoded);
     }
 
-    public function testDecodeWillThrowExceptionWhenUnableToFetchJwtWebKeys()
+    public function testDecodeWillThrowExceptionWhenUnableToFetchJwtWebKeys(): void
     {
         $this->client->setJwtWebKeys([]);
 
         $mockHttpHandler = new MockHttpHandler();
-        $handlerStack = HandlerStack::create($this->mockHttpHandler);
-        $mockHttpHandler->append(new RequestException('Error Communicating with Server', new Request('GET', 'test')));
+        $exceptionMessage = 'Error Communicating with Server';
+        $mockHttpHandler->append(new RequestException($exceptionMessage, new Request('GET', 'test')));
+        $handlerStack = HandlerStack::create($mockHttpHandler);
         $httpClient = new HttpClient(['handler' => $handlerStack]);
 
         $this->client->setHttpClient($httpClient);
 
         $this->expectException(InvalidTokenException::class);
-        $this->expectErrorMessage('Unable to fetch JWT web keys');
+        $this->expectErrorMessage(sprintf('Unable to fetch JWT web keys: %s', $exceptionMessage));
 
         $this->client->decodeToken('');
     }

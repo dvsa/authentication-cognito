@@ -15,6 +15,7 @@ use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Exception\TransferException;
 use GuzzleHttp\Psr7\Response;
 
 class Client implements OAuthClientInterface
@@ -402,12 +403,8 @@ class Client implements OAuthClientInterface
 
         try {
             $response = $this->getHttpClient()->get($url);
-        } catch (GuzzleException $e) {
+        } catch (TransferException $e) {
             throw new \Exception(sprintf('Unable to fetch JWT web keys: %s', $e->getMessage()), (int)$e->getCode(), $e);
-        }
-
-        if ($response->getStatusCode() !== 200) {
-            throw new \Exception(sprintf('Unable to fetch JWT web keys. Status code %d', $response->getStatusCode()));
         }
 
         $body = $response->getBody()->getContents();
