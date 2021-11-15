@@ -134,6 +134,15 @@ class Client implements OAuthClientInterface
     public function responseToAuthChallenge(string $challengeName, array $challengeResponses, string $session): AccessTokenInterface
     {
         try {
+            $identifier = $challengeResponses['USERNAME'] ?? null;
+            if (empty($identifier)) {
+                throw new ClientException("ChallengeResponse must contain 'USERNAME'");
+            }
+
+            if (!array_key_exists('SECRET_HASH', $challengeResponses)) {
+                $challengeResponses['SECRET_HASH'] = $this->cognitoSecretHash($identifier);
+            }
+
             $response = $this->cognitoClient->adminRespondToAuthChallenge(
                 [
                     'ChallengeName'      => $challengeName,
