@@ -140,6 +140,7 @@ class Client implements OAuthClientInterface
                     'ChallengeResponses' => $challengeResponses,
                     'ClientId'           => $this->clientId,
                     'Session'            => $session,
+                    'UserPoolId'         => $this->poolId
                 ]
             );
 
