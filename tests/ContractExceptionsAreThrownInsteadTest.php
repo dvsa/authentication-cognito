@@ -69,6 +69,7 @@ class ContractExceptionsAreThrownInsteadTest extends TestCase
         yield ['changeAttributes', ['IDENTIFIER', []]];
         yield ['enableUser', ['IDENTIFIER']];
         yield ['disableUser', ['IDENTIFIER']];
+        yield ['deleteUser', ['IDENTIFIER']];
         yield ['getUserByIdentifier', ['IDENTIFIER']];
     }
 }

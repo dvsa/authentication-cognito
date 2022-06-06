@@ -249,6 +249,25 @@ class Client implements OAuthClientInterface
     /**
      * @inheritDoc
      *
+     * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminDeleteUser.html
+     */
+    public function deleteUser(string $identifier): bool
+    {
+        try {
+            $this->cognitoClient->adminDeleteUser([
+                'Username' => $identifier,
+                'UserPoolId' => $this->poolId,
+            ]);
+
+            return true;
+        } catch (AwsException $e) {
+            throw new ClientException((string) $e->getAwsErrorMessage(), (int) $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html
      */
     public function getUserByIdentifier(string $identifier): ResourceOwnerInterface
