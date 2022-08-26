@@ -12,7 +12,7 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
-use GuzzleHttp\Psr7\Response;
+use Illuminate\Support\Collection;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -67,16 +67,18 @@ EOF;
         $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
 
         $this->client->setJwtWebKeys(
-            JWK::parseKeySet([
-                'keys' => [[
-                    "kid" => "1234example=",
-                    "alg" => "RS256",
-                    "kty" => "RSA",
-                    "e" => "AQAB",
-                    "n" => "0Ttga33B1yX4w77NbpKyNYDNSVCo8j-RlZaZ9tI-KfkV1d-tfsvI9ZPAheP11FoN52ceBaY5ltelHW-IKwCfyT0orLdsxLgowaXki9woF1Azvcg2JVxQLv9aVjjAvy3CZFIG_EeN7J3nsyCXGnu1yMEbnvkWxA88__Q6HQ2K9wqfApkQ0LNlsK0YHz_sfjHNvRKxnbAJk7D5fUhZunPZXOPHXFgA5SvLvMaNIXduMKJh4OMfuoLdJowXJAR9j31Mqz_is4FMhm_9Mq7vZZ-uF09htRvIR8tRY28oJuW1gKWyg7cQQpnjHgFyG3XLXWAeXclWqyh_LfjyHQjrYhyeFw",
-                    "use" => "sig",
-                ]]
-            ])
+            new Collection(
+                JWK::parseKeySet([
+                    'keys' => [[
+                        "kid" => "1234example=",
+                        "alg" => "RS256",
+                        "kty" => "RSA",
+                        "e" => "AQAB",
+                        "n" => "0Ttga33B1yX4w77NbpKyNYDNSVCo8j-RlZaZ9tI-KfkV1d-tfsvI9ZPAheP11FoN52ceBaY5ltelHW-IKwCfyT0orLdsxLgowaXki9woF1Azvcg2JVxQLv9aVjjAvy3CZFIG_EeN7J3nsyCXGnu1yMEbnvkWxA88__Q6HQ2K9wqfApkQ0LNlsK0YHz_sfjHNvRKxnbAJk7D5fUhZunPZXOPHXFgA5SvLvMaNIXduMKJh4OMfuoLdJowXJAR9j31Mqz_is4FMhm_9Mq7vZZ-uF09htRvIR8tRY28oJuW1gKWyg7cQQpnjHgFyG3XLXWAeXclWqyh_LfjyHQjrYhyeFw",
+                        "use" => "sig",
+                    ]]
+                ])
+            )
         );
     }
 
@@ -153,7 +155,7 @@ EOF;
 
     public function testDecodeWillThrowExceptionWhenUnableToFetchJwtWebKeys(): void
     {
-        $this->client->setJwtWebKeys([]);
+        $this->client->setJwtWebKeys(null);
 
         $mockHttpHandler = new MockHttpHandler();
         $exceptionMessage = 'Error Communicating with Server';
@@ -164,7 +166,7 @@ EOF;
         $this->client->setHttpClient($httpClient);
 
         $this->expectException(InvalidTokenException::class);
-        $this->expectErrorMessage(sprintf('Unable to fetch JWT web keys: %s', $exceptionMessage));
+        $this->expectErrorMessage($exceptionMessage);
 
         $this->client->decodeToken('');
     }
