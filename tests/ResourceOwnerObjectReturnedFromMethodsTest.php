@@ -4,7 +4,7 @@ namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Credentials\Credentials;
-use Aws\MockHandler;
+use Aws\MockHandler as AwsMockHandler;
 use Aws\Result;
 use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Authentication\Cognito\CognitoUser;
@@ -17,19 +17,13 @@ class ResourceOwnerObjectReturnedFromMethodsTest extends TestCase
 {
     const RESOURCE_OWNER = CognitoUser::class;
 
-    /**
-     * @var MockHandler
-     */
-    protected $mockHandler;
+    protected AwsMockHandler $mockHandler;
 
-    /**
-     * @var Client
-     */
-    protected $client;
+    protected Client $client;
 
     protected function setUp(): void
     {
-        $this->mockHandler = new MockHandler();
+        $this->mockHandler = new AwsMockHandler();
 
         $awsCredentials = new Credentials('AWS_ACCESS_KEY', 'AWS_SECRET_KEY');
 
@@ -79,10 +73,10 @@ class ResourceOwnerObjectReturnedFromMethodsTest extends TestCase
 
         // Assert the correct values are set on the `$response` object.
         $this->assertEquals($response->getUsername(), 'USERNAME');
-        $this->assertEquals($response->enabled, 'true');
-        $this->assertEquals($response->created_date, 'USER_CREATED_DATE');
-        $this->assertEquals($response->last_modified_date, 'USER_LAST_MODIFIED_DATE');
-        $this->assertEquals($response->status, 'USER_STATUS');
+        $this->assertEquals($response->{'enabled'}, 'true');
+        $this->assertEquals($response->{'created_date'}, 'USER_CREATED_DATE');
+        $this->assertEquals($response->{'last_modified_date'}, 'USER_LAST_MODIFIED_DATE');
+        $this->assertEquals($response->{'status'}, 'USER_STATUS');
         $this->assertEquals($response->{'NAME_1'}, 'VALUE_1');
         $this->assertEquals($response->{'NAME_2'}, 'VALUE_2');
     }
@@ -118,10 +112,10 @@ class ResourceOwnerObjectReturnedFromMethodsTest extends TestCase
         $this->assertInstanceOf(self::RESOURCE_OWNER, $response);
 
         $this->assertEquals($response->getUsername(), 'USERNAME');
-        $this->assertEquals($response->enabled, 'true');
-        $this->assertEquals($response->created_date, 'USER_CREATED_DATE');
-        $this->assertEquals($response->last_modified_date, 'USER_LAST_MODIFIED_DATE');
-        $this->assertEquals($response->status, 'USER_STATUS');
+        $this->assertEquals($response->{'enabled'}, 'true');
+        $this->assertEquals($response->{'created_date'}, 'USER_CREATED_DATE');
+        $this->assertEquals($response->{'last_modified_date'}, 'USER_LAST_MODIFIED_DATE');
+        $this->assertEquals($response->{'status'}, 'USER_STATUS');
         $this->assertEquals($response->{'NAME_1'}, 'VALUE_1');
         $this->assertEquals($response->{'NAME_2'}, 'VALUE_2');
     }

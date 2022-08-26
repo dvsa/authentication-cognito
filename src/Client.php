@@ -41,11 +41,11 @@ class Client implements OAuthClientInterface
 
     protected string $poolId;
 
-    protected ?ArrayAccess $jwtWebKeys;
+    protected ?ArrayAccess $jwtWebKeys = null;
 
-    protected ?ClientInterface $httpClient;
+    protected ?ClientInterface $httpClient = null;
 
-    protected ?CacheItemPoolInterface $cache;
+    protected ?CacheItemPoolInterface $cache = null;
 
     public function __construct(
         CognitoIdentityProviderClient $cognitoClient,

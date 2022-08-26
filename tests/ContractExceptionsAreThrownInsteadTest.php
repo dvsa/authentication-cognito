@@ -6,7 +6,7 @@ use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\CommandInterface;
 use Aws\Credentials\Credentials;
 use Aws\Exception\AwsException;
-use Aws\MockHandler;
+use Aws\MockHandler as AwsMockHandler;
 use Dvsa\Authentication\Cognito\Client;
 use Dvsa\Contracts\Auth\Exceptions\ClientException;
 use GuzzleHttp\Client as HttpClient;
@@ -16,19 +16,13 @@ use PHPUnit\Framework\TestCase;
 
 class ContractExceptionsAreThrownInsteadTest extends TestCase
 {
-    /**
-     * @var MockHandler
-     */
-    protected $mockHandler;
+    protected AwsMockHandler $mockHandler;
 
-    /**
-     * @var Client
-     */
-    protected $client;
+    protected Client $client;
 
     protected function setUp(): void
     {
-        $this->mockHandler = new MockHandler();
+        $this->mockHandler = new AwsMockHandler();
 
         $awsCredentials = new Credentials('AWS_ACCESS_KEY', 'AWS_SECRET_KEY');
 

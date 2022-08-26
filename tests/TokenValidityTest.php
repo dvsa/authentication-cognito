@@ -48,15 +48,9 @@ X4nLcSbZtO0tcDGMfMpWF2JGYOEJQNetPozL/ICGVFyIO8yzXm8U
 -----END RSA PRIVATE KEY-----
 EOF;
 
-    /**
-     * @var Client|MockObject
-     */
-    protected $client;
+    protected Client $client;
 
-    /**
-     * @var MockHttpHandler
-     */
-    protected $mockHttpHandler;
+    protected MockHttpHandler $mockHttpHandler;
 
     protected function setUp(): void
     {
