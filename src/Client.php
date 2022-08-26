@@ -30,45 +30,22 @@ class Client implements OAuthClientInterface
     /**
      * When checking nbf, iat or expiration times on tokens, we want to provide
      * some extra leeway time to account for clock skew.
-     *
-     * @var int
      */
-    public static $leeway = 0;
+    public static int $leeway = 0;
 
-    /**
-     * @var CognitoIdentityProviderClient
-     */
-    protected $cognitoClient;
+    protected CognitoIdentityProviderClient $cognitoClient;
 
-    /**
-     * @var string
-     */
-    protected $clientId;
+    protected string $clientId;
 
-    /**
-     * @var string
-     */
-    protected $clientSecret;
+    protected string $clientSecret;
 
-    /**
-     * @var string
-     */
-    protected $poolId;
+    protected string $poolId;
 
-    /**
-     * @var ArrayAccess|null
-     */
-    protected $jwtWebKeys;
+    protected ?ArrayAccess $jwtWebKeys;
 
-    /**
-     * @var ClientInterface|null
-     */
-    protected $httpClient;
+    protected ?ClientInterface $httpClient;
 
-    /**
-     * @var CacheItemPoolInterface|null
-     */
-    protected $cache = null;
+    protected ?CacheItemPoolInterface $cache;
 
     public function __construct(
         CognitoIdentityProviderClient $cognitoClient,
@@ -402,8 +379,6 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @return ArrayAccess<string, Key>
-     *
      * @throws ClientExceptionInterface
      * @throws \JsonException
      */
@@ -441,8 +416,6 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @phpstan-return ArrayAccess<string, Key>
-     *
      * @throws ClientExceptionInterface|\JsonException
      */
     protected function downloadJwtWebKeys(): ArrayAccess
