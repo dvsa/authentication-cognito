@@ -14,10 +14,7 @@ use League\OAuth2\Client\Token\AccessToken as BaseAccessToken;
  */
 class AccessToken extends BaseAccessToken implements AccessTokenInterface
 {
-    /**
-     * @var null|string
-     */
-    protected $idToken;
+    protected ?string $idToken = null;
 
     /**
      * @inheritDoc

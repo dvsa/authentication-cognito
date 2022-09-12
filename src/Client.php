@@ -2,6 +2,7 @@
 
 namespace Dvsa\Authentication\Cognito;
 
+use ArrayAccess;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
 use Dvsa\Contracts\Auth\AccessTokenInterface;
@@ -11,12 +12,16 @@ use Dvsa\Contracts\Auth\Exceptions\ClientException;
 use Dvsa\Contracts\Auth\Exceptions\InvalidTokenException;
 use Dvsa\Contracts\Auth\OAuthClientInterface;
 use Dvsa\Contracts\Auth\ResourceOwnerInterface;
+use Firebase\JWT\CachedKeySet;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use GuzzleHttp\Client as HttpClient;
-use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Exception\TransferException;
-use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\HttpFactory;
+use Illuminate\Support\Collection;
+use Psr\Cache\CacheItemPoolInterface;
+use Psr\Http\Client\ClientExceptionInterface;
+use Psr\Http\Client\ClientInterface;
 
 class Client implements OAuthClientInterface
 {
@@ -25,40 +30,22 @@ class Client implements OAuthClientInterface
     /**
      * When checking nbf, iat or expiration times on tokens, we want to provide
      * some extra leeway time to account for clock skew.
-     *
-     * @var int
      */
-    public static $leeway = 0;
+    public static int $leeway = 0;
 
-    /**
-     * @var CognitoIdentityProviderClient
-     */
-    protected $cognitoClient;
+    protected CognitoIdentityProviderClient $cognitoClient;
 
-    /**
-     * @var string
-     */
-    protected $clientId;
+    protected string $clientId;
 
-    /**
-     * @var string
-     */
-    protected $clientSecret;
+    protected string $clientSecret;
 
-    /**
-     * @var string
-     */
-    protected $poolId;
+    protected string $poolId;
 
-    /**
-     * @var string[]
-     */
-    protected $jwtWebKeys = [];
+    protected ?ArrayAccess $jwtWebKeys = null;
 
-    /**
-     * @var HttpClient|null
-     */
-    private $httpClient = null;
+    protected ?ClientInterface $httpClient = null;
+
+    protected ?CacheItemPoolInterface $cache = null;
 
     public function __construct(
         CognitoIdentityProviderClient $cognitoClient,
@@ -292,11 +279,19 @@ class Client implements OAuthClientInterface
     public function decodeToken(string $token): array
     {
         try {
+            /**
+             * The typing of the JWT library is not quite right for `decode()` method for PHPStan as it doesn't accept ArrayAccess.
+             * The following type is required to cast `ArrayAccess<string, Key>` to just an expected `array<string, Key>`.
+             *
+             * Can be removed once fixed in the JWT library.
+             *
+             * @var array<string, Key> $keySet
+             */
             $keySet = $this->getJwtWebKeys();
 
             JWT::$leeway = self::$leeway;
 
-            $tokenClaims = (array) JWT::decode($token, $keySet, ['RS256']);
+            $tokenClaims = (array) JWT::decode($token, $keySet);
 
             $this->validateTokenClaims($tokenClaims);
 
@@ -378,51 +373,52 @@ class Client implements OAuthClientInterface
         }
     }
 
-    public function setJwtWebKeys(array $keys): void
+    public function setJwtWebKeys(?ArrayAccess $keys): void
     {
         $this->jwtWebKeys = $keys;
     }
 
-    public function getJwtWebKeys(): array
+    /**
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
+     */
+    public function getJwtWebKeys(): ArrayAccess
     {
         if (empty($this->jwtWebKeys)) {
-            $this->jwtWebKeys = $this->parseJwk($this->downloadJwtWebKeys());
+            $this->jwtWebKeys = $this->downloadJwtWebKeys();
         }
 
         return $this->jwtWebKeys;
     }
 
-    /**
-     * @param HttpClient $httpClient
-     */
-    public function setHttpClient(HttpClient $httpClient): void
+    public function setHttpClient(ClientInterface $httpClient): void
     {
         $this->httpClient = $httpClient;
     }
 
-    /**
-     * @return HttpClient
-     */
-    public function getHttpClient(): HttpClient
+    public function getHttpClient(): ClientInterface
     {
         if (is_null($this->httpClient)) {
             $this->httpClient = new HttpClient();
         }
+
         return $this->httpClient;
     }
 
-    /**
-     * @return string[]
-     */
-    protected function parseJwk(array $keys): array
+    public function setCache(?CacheItemPoolInterface $cache): void
     {
-        return JWK::parseKeySet($keys);
+        $this->cache = $cache;
+    }
+
+    public function getCache(): ?CacheItemPoolInterface
+    {
+        return $this->cache;
     }
 
     /**
-     * @throws \JsonException
+     * @throws ClientExceptionInterface|\JsonException
      */
-    protected function downloadJwtWebKeys(): array
+    protected function downloadJwtWebKeys(): ArrayAccess
     {
         $url = sprintf(
             'https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json',
@@ -430,15 +426,26 @@ class Client implements OAuthClientInterface
             $this->poolId
         );
 
-        try {
-            $response = $this->getHttpClient()->get($url);
-        } catch (TransferException $e) {
-            throw new \Exception(sprintf('Unable to fetch JWT web keys: %s', $e->getMessage()), (int)$e->getCode(), $e);
+        $factory = new HttpFactory();
+
+        $cache = $this->getCache();
+
+        if ($cache) {
+            return new CachedKeySet(
+                $url,
+                $this->getHttpClient(),
+                $factory,
+                $cache
+            );
         }
+
+        $request = $factory->createRequest('get', $url);
+
+        $response = $this->getHttpClient()->sendRequest($request);
 
         $body = $response->getBody()->getContents();
         if (empty($body)) {
-            return [];
+            return new Collection();
         }
 
         $keys = json_decode($body, true);
@@ -447,7 +454,7 @@ class Client implements OAuthClientInterface
             throw new \JsonException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
         }
 
-        return $keys;
+        return new Collection(JWK::parseKeySet($keys));
     }
 
     protected function cognitoSecretHash(string $identifier): string

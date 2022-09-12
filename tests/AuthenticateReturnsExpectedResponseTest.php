@@ -4,7 +4,7 @@ namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Credentials\Credentials;
-use Aws\MockHandler;
+use Aws\MockHandler as AwsMockHandler;
 use Aws\Result;
 use Dvsa\Authentication\Cognito\AccessToken;
 use Dvsa\Authentication\Cognito\Client;
@@ -18,19 +18,13 @@ use PHPUnit\Framework\TestCase;
 
 class AuthenticateReturnsExpectedResponseTest extends TestCase
 {
-    /**
-     * @var MockHandler
-     */
-    protected $mockHandler;
+    protected AwsMockHandler $mockHandler;
 
-    /**
-     * @var Client
-     */
-    protected $client;
+    protected Client $client;
 
     protected function setUp(): void
     {
-        $this->mockHandler = new MockHandler();
+        $this->mockHandler = new AwsMockHandler();
 
         $awsCredentials = new Credentials('AWS_ACCESS_KEY', 'AWS_SECRET_KEY');
 
