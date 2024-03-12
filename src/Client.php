@@ -483,11 +483,11 @@ class Client implements OAuthClientInterface
     }
 
     /**
-     * @param mixed $value
      *
+     * @param bool|\DateTimeInterface|string $value
      * @return string
      */
-    protected function formatAttributeValue($value): string
+    protected function formatAttributeValue(bool|\DateTimeInterface|string $value): string
     {
         if (is_bool($value)) {
             return $value ? 'true' : 'false';
