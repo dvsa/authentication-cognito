@@ -33,14 +33,6 @@ class Client implements OAuthClientInterface
      */
     public static int $leeway = 0;
 
-    protected CognitoIdentityProviderClient $cognitoClient;
-
-    protected string $clientId;
-
-    protected string $clientSecret;
-
-    protected string $poolId;
-
     protected ?ArrayAccess $jwtWebKeys = null;
 
     protected ?ClientInterface $httpClient = null;
@@ -48,16 +40,12 @@ class Client implements OAuthClientInterface
     protected ?CacheItemPoolInterface $cache = null;
 
     public function __construct(
-        CognitoIdentityProviderClient $cognitoClient,
-        string $clientId,
-        string $clientSecret,
-        string $poolId
-    ) {
-        $this->cognitoClient = $cognitoClient;
-        $this->clientId = $clientId;
-        $this->clientSecret = $clientSecret;
-        $this->poolId = $poolId;
-
+        protected CognitoIdentityProviderClient $cognitoClient,
+        protected string                        $clientId,
+        protected string                        $clientSecret,
+        protected string                        $poolId
+    )
+    {
         $this->resourceOwnerClass = CognitoUser::class;
     }
 
