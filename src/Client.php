@@ -436,7 +436,7 @@ class Client implements OAuthClientInterface
             return new Collection();
         }
 
-        $keys = json_decode($body, true);
+        $keys = json_decode($body, associative:true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
             throw new \JsonException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
@@ -459,7 +459,7 @@ class Client implements OAuthClientInterface
             'sha256',
             $message,
             $this->clientSecret,
-            true
+            binary: true
         );
 
         return base64_encode($hash);
