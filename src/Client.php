@@ -44,8 +44,7 @@ class Client implements OAuthClientInterface
         protected string                        $clientId,
         protected string                        $clientSecret,
         protected string                        $poolId
-    )
-    {
+    ) {
         $this->resourceOwnerClass = CognitoUser::class;
     }
 

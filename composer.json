@@ -47,5 +47,11 @@
     }
   },
   "minimum-stability": "dev",
-  "prefer-stable": true
+  "prefer-stable": true,
+  "extra" : {
+    "bamarni-bin": {
+      "bin-links": true,
+      "forward-command": true
+    }
+  }
 }
