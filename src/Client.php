@@ -482,12 +482,7 @@ class Client implements OAuthClientInterface
         return $userAttributes;
     }
 
-    /**
-     *
-     * @param bool|\DateTimeInterface|string $value
-     * @return string
-     */
-    protected function formatAttributeValue(bool|\DateTimeInterface|string $value): string
+    protected function formatAttributeValue(mixed $value): string
     {
         if (is_bool($value)) {
             return $value ? 'true' : 'false';
