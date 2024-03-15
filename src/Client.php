@@ -33,14 +33,6 @@ class Client implements OAuthClientInterface
      */
     public static int $leeway = 0;
 
-    protected CognitoIdentityProviderClient $cognitoClient;
-
-    protected string $clientId;
-
-    protected string $clientSecret;
-
-    protected string $poolId;
-
     protected ?ArrayAccess $jwtWebKeys = null;
 
     protected ?ClientInterface $httpClient = null;
@@ -48,16 +40,11 @@ class Client implements OAuthClientInterface
     protected ?CacheItemPoolInterface $cache = null;
 
     public function __construct(
-        CognitoIdentityProviderClient $cognitoClient,
-        string $clientId,
-        string $clientSecret,
-        string $poolId
+        protected CognitoIdentityProviderClient $cognitoClient,
+        protected string                        $clientId,
+        protected string                        $clientSecret,
+        protected string                        $poolId
     ) {
-        $this->cognitoClient = $cognitoClient;
-        $this->clientId = $clientId;
-        $this->clientSecret = $clientSecret;
-        $this->poolId = $poolId;
-
         $this->resourceOwnerClass = CognitoUser::class;
     }
 
@@ -448,7 +435,7 @@ class Client implements OAuthClientInterface
             return new Collection();
         }
 
-        $keys = json_decode($body, true);
+        $keys = json_decode($body, associative:true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
             throw new \JsonException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
@@ -471,7 +458,7 @@ class Client implements OAuthClientInterface
             'sha256',
             $message,
             $this->clientSecret,
-            true
+            binary: true
         );
 
         return base64_encode($hash);
@@ -494,12 +481,7 @@ class Client implements OAuthClientInterface
         return $userAttributes;
     }
 
-    /**
-     * @param mixed $value
-     *
-     * @return string
-     */
-    protected function formatAttributeValue($value): string
+    protected function formatAttributeValue(mixed $value): string
     {
         if (is_bool($value)) {
             return $value ? 'true' : 'false';

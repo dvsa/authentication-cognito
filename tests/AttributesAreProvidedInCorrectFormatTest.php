@@ -85,5 +85,12 @@ class AttributesAreProvidedInCorrectFormatTest extends TestCase
             [],
             []
         ];
+
+        yield [
+            ['Key1' => null],
+            [
+                ['Name' => 'Key1', 'Value' => ''],
+            ]
+        ];
     }
 }
