@@ -299,7 +299,7 @@ class Client implements OAuthClientInterface
             throw new InvalidTokenException('"token_use" invalid');
         }
 
-        $expectedIss = sprintf('https://cognito-idp.%s.amazonaws.com/%s', $this->cognitoClient->getRegion(), $this->poolId);
+        $expectedIss = sprintf('%s/%s', $this->cognitoClient->getEndpoint(), $this->poolId);
         if (!isset($tokenClaims['iss']) || $tokenClaims['iss'] !== $expectedIss) {
             throw new InvalidTokenException('"iss" invalid');
         }
@@ -408,8 +408,8 @@ class Client implements OAuthClientInterface
     protected function downloadJwtWebKeys(): ArrayAccess
     {
         $url = sprintf(
-            'https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json',
-            $this->cognitoClient->getRegion(),
+            '%s/%s/.well-known/jwks.json',
+            $this->cognitoClient->getEndpoint(),
             $this->poolId
         );
 
