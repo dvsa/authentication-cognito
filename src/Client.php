@@ -300,13 +300,7 @@ class Client implements OAuthClientInterface
         }
 
         $expectedIss = sprintf('%s/%s', $this->cognitoClient->getEndpoint(), $this->poolId);
-        echo "expectedIss:";
-        echo $expectedIss;
         if (!isset($tokenClaims['iss']) || $tokenClaims['iss'] !== $expectedIss) {
-            error_log('expectedIss:');
-            error_log($expectedIss);
-            error_log('tokenclaims:');
-            error_log($tokenClaims['iss']);
             throw new InvalidTokenException('"iss" invalid');
         }
 
