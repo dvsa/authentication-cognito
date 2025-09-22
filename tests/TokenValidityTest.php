@@ -57,6 +57,7 @@ EOF;
         $cognitoIdentityProviderMock = $this->createMock(CognitoIdentityProviderClient::class);
 
         $cognitoIdentityProviderMock->method('getRegion')->willReturn('eu-west-2');
+        $cognitoIdentityProviderMock->method('getEndpoint')->willReturn('https://cognito-idp.eu-west-2.amazonaws.com');
 
         $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
 
