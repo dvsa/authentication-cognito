@@ -15,7 +15,7 @@
     "ext-json": "*",
     "aws/aws-sdk-php": "^3.288.1",
     "dvsa/contracts": "^1.1",
-    "firebase/php-jwt": "^6.3",
+    "firebase/php-jwt": "^6.3 || ^7.0",
     "guzzlehttp/guzzle": "^7.4.5",
     "guzzlehttp/psr7": "^2.4.5",
     "illuminate/collections": "^8.0 || ^11.0",
