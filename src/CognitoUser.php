@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dvsa\Authentication\Cognito;
 
 use Dvsa\Contracts\Auth\AbstractResourceOwner;
@@ -8,6 +10,8 @@ use Dvsa\Contracts\Auth\AbstractResourceOwner;
  * A Resource owner object, containing helper methods for non-custom attributes.
  *
  * @see https://openid.net/specs/openid-connect-basic-1_0.html#rfc.section.2.5
+ *
+ * @api
  */
 class CognitoUser extends AbstractResourceOwner
 {
@@ -111,6 +115,11 @@ class CognitoUser extends AbstractResourceOwner
         return $this->get('picture');
     }
 
+    /**
+     * @param array<string, mixed> $result
+     *
+     * @return array<string, mixed>
+     */
     public static function prepareAwsResponse(array $result): array
     {
         $attributes = [

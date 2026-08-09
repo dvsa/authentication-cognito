@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
@@ -11,6 +13,7 @@ use Dvsa\Authentication\Cognito\Client;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
 use GuzzleHttp\HandlerStack;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class AttributesAreProvidedInCorrectFormatTest extends TestCase
@@ -39,9 +42,7 @@ class AttributesAreProvidedInCorrectFormatTest extends TestCase
         $this->client->setHttpClient($httpClient);
     }
 
-    /**
-     * @dataProvider provideAttributeCombinations
-     */
+    #[DataProvider('provideAttributeCombinations')]
     public function testAttributesFormattedCorrectly(array $raw, array $expected): void
     {
         // You can provide a function to invoke; here we throw a mock exception
@@ -54,7 +55,7 @@ class AttributesAreProvidedInCorrectFormatTest extends TestCase
         $this->client->changeAttributes('USERNAME', $raw);
     }
 
-    public function provideAttributeCombinations(): \Generator
+    public static function provideAttributeCombinations(): \Generator
     {
         yield [
             ['Key1' => 'Value1', 'Key2' => 'Value2'],

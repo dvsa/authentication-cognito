@@ -7,14 +7,19 @@ on:
     branches: [ main ]
   schedule:
     - cron: '0 0 * * 1'
+  # Scheduled workflows are disabled automatically after 60 days without repository
+  # activity, which is how this suite silently stopped running. This allows a run to be
+  # kicked off by hand after re-enabling, without having to push a commit to do it.
+  workflow_dispatch:
 
 jobs:
   tests:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        php: ['8.0', '8.1', '8.2', '8.3']
+        php: ['8.2', '8.3', '8.4']
         stability: [prefer-lowest, prefer-stable]
 
     name: PHP ${{ matrix.php }} - ${{ matrix.stability }}
@@ -34,4 +39,36 @@ jobs:
         run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
 
       - name: Execute tests
-        run: vendor/bin/phpunit --verbose
+        run: vendor/bin/phpunit
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: pcov
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      # Reported, not enforced. Several public methods currently have no coverage at all, so
+      # any threshold worth setting would fail today. Make the number visible first, then
+      # decide what floor to hold it to.
+      - name: Execute tests with coverage
+        run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
+
+      - name: Upload coverage report
+        if: ${{ success() || failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: error
