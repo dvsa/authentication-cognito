@@ -12,6 +12,11 @@ on:
   # kicked off by hand after re-enabling, without having to push a commit to do it.
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
 jobs:
   tests:
     runs-on: ubuntu-latest
