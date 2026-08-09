@@ -38,6 +38,17 @@ class Client implements OAuthClientInterface
      */
     public static int $leeway = 0;
 
+    /**
+     * How long a cached JWKS may be trusted before it is re-fetched.
+     *
+     * This deliberately does not default to null (i.e. "inherit the pool's own lifetime"). A key
+     * that Cognito has revoked is still a *known* key id, so it never triggers the unknown-kid
+     * re-fetch that would evict it. Against a pool with no default lifetime — which is what
+     * several PSR-6 implementations ship with — the client would go on accepting tokens signed by
+     * a revoked key indefinitely. An expiry puts a ceiling on that window.
+     */
+    public const DEFAULT_JWKS_CACHE_TTL = 3600;
+
     /** @var ArrayAccess<string, Key>|null */
     protected ?ArrayAccess $jwtWebKeys = null;
 
@@ -45,12 +56,18 @@ class Client implements OAuthClientInterface
 
     protected ?CacheItemPoolInterface $cache = null;
 
+    protected ?int $cacheExpiresAfter = self::DEFAULT_JWKS_CACHE_TTL;
+
+    protected bool $cacheRateLimit = true;
+
     public function __construct(
         protected CognitoIdentityProviderClient $cognitoClient,
         protected string $clientId,
         protected string $clientSecret,
-        protected string $poolId
+        protected string $poolId,
+        ?CacheItemPoolInterface $cache = null
     ) {
+        $this->cache = $cache;
         $this->resourceOwnerClass = CognitoUser::class;
     }
 
@@ -412,6 +429,29 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * Tune how the cached JWKS behaves. Only has an effect when a cache pool has been provided.
+     *
+     * Calling this with no arguments keeps the safe defaults. Both are worth understanding before
+     * overriding:
+     *
+     * - $expiresAfter — seconds before a cached JWKS is re-fetched. Passing null hands the
+     *   decision to the pool's own default lifetime, which for some implementations means the
+     *   entry never expires. See {@see self::DEFAULT_JWKS_CACHE_TTL} for why that matters.
+     * - $rateLimit — caps JWKS re-fetches at 10/minute. A cache miss is driven by the key id in
+     *   the incoming token, which is attacker-controlled, so leaving this off lets a stream of
+     *   tokens bearing unknown key ids turn into a stream of outbound calls to Cognito. The
+     *   trade-off is that once the budget is spent, tokens with an unrecognised key id are
+     *   rejected until the window clears.
+     */
+    public function setCacheOptions(
+        ?int $expiresAfter = self::DEFAULT_JWKS_CACHE_TTL,
+        bool $rateLimit = true
+    ): void {
+        $this->cacheExpiresAfter = $expiresAfter;
+        $this->cacheRateLimit = $rateLimit;
+    }
+
+    /**
      * @return ArrayAccess<string, Key>
      *
      * @throws ClientExceptionInterface|\JsonException
@@ -433,7 +473,9 @@ class Client implements OAuthClientInterface
                 $url,
                 $this->getHttpClient(),
                 $factory,
-                $cache
+                $cache,
+                $this->cacheExpiresAfter,
+                $this->cacheRateLimit
             );
         }
 
