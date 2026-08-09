@@ -13,57 +13,91 @@ use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Collection;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class TokenValidityTest extends TestCase
 {
-    const PRIVATE_KEY = <<<EOF
------BEGIN RSA PRIVATE KEY-----
-    // load a sample key in from environment 
------END RSA PRIVATE KEY-----
-EOF;
+    const KID = '1234example=';
+
+    const REGION = 'eu-west-2';
+
+    const POOL_ID = 'POOL_ID';
+
+    /**
+     * Signing key material is generated per run rather than committed. These tests need a private
+     * key to mint tokens with and the matching public key to verify them against, and a real key
+     * pair in the repository is both a secret-scanning liability and something that quietly rots.
+     * Generating one costs a few hundred milliseconds once per class.
+     */
+    protected static string $privateKey;
+
+    /**
+     * @var array<string, mixed> JWKS built from the public half of {@see self::$privateKey}.
+     */
+    protected static array $jwks;
 
     protected Client $client;
 
     protected MockHttpHandler $mockHttpHandler;
 
+    public static function setUpBeforeClass(): void
+    {
+        $key = openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]);
+
+        if (false === $key) {
+            throw new RuntimeException('Unable to generate a test key pair: ' . openssl_error_string());
+        }
+
+        openssl_pkey_export($key, $privateKey);
+
+        $details = openssl_pkey_get_details($key);
+
+        if (false === $details) {
+            throw new RuntimeException('Unable to read the generated test key: ' . openssl_error_string());
+        }
+
+        static::$privateKey = $privateKey;
+
+        static::$jwks = [
+            'keys' => [[
+                'kid' => static::KID,
+                'alg' => 'RS256',
+                'kty' => 'RSA',
+                'e' => static::base64UrlEncode($details['rsa']['e']),
+                'n' => static::base64UrlEncode($details['rsa']['n']),
+                'use' => 'sig',
+            ]],
+        ];
+    }
+
     protected function setUp(): void
     {
         $cognitoIdentityProviderMock = $this->createMock(CognitoIdentityProviderClient::class);
 
-        $cognitoIdentityProviderMock->method('getRegion')->willReturn('eu-west-2');
-        $cognitoIdentityProviderMock->method('getEndpoint')->willReturn('https://cognito-idp.eu-west-2.amazonaws.com');
+        $cognitoIdentityProviderMock->method('getRegion')->willReturn(static::REGION);
+        $cognitoIdentityProviderMock->method('getEndpoint')
+            ->willReturn(sprintf('https://cognito-idp.%s.amazonaws.com', static::REGION));
 
-        $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', 'POOL_ID');
+        $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', static::POOL_ID);
 
-        $this->client->setJwtWebKeys(
-            new Collection(
-                JWK::parseKeySet([
-                    'keys' => [[
-                        "kid" => "1234example=",
-                        "alg" => "RS256",
-                        "kty" => "RSA",
-                        "e" => "AQAB",
-                        "n" => "0Ttga33B1yX4w77NbpKyNYDNSVCo8j-RlZaZ9tI-KfkV1d-tfsvI9ZPAheP11FoN52ceBaY5ltelHW-IKwCfyT0orLdsxLgowaXki9woF1Azvcg2JVxQLv9aVjjAvy3CZFIG_EeN7J3nsyCXGnu1yMEbnvkWxA88__Q6HQ2K9wqfApkQ0LNlsK0YHz_sfjHNvRKxnbAJk7D5fUhZunPZXOPHXFgA5SvLvMaNIXduMKJh4OMfuoLdJowXJAR9j31Mqz_is4FMhm_9Mq7vZZ-uF09htRvIR8tRY28oJuW1gKWyg7cQQpnjHgFyG3XLXWAeXclWqyh_LfjyHQjrYhyeFw",
-                        "use" => "sig",
-                    ]]
-                ])
-            )
-        );
+        $this->client->setJwtWebKeys(new Collection(JWK::parseKeySet(static::$jwks)));
     }
 
     public function testWillDecodeCompliantJwt(): void
     {
         $payload = [
-            "kid" => "1234example=",
+            "kid" => static::KID,
             "alg" => "RS256",
-            "aud" => "POOL_ID",
-            "iss" => sprintf('https://cognito-idp.%s.amazonaws.com/%s', 'eu-west-2', 'POOL_ID'),
+            "aud" => static::POOL_ID,
+            "iss" => $this->issuer(),
             "token_use" => 'access',
         ];
 
-        $encoded = JWT::encode($payload, self::PRIVATE_KEY, 'RS256', '1234example=');
+        $encoded = JWT::encode($payload, static::$privateKey, 'RS256', static::KID);
 
         $jwt = $this->client->decodeToken($encoded);
 
@@ -73,14 +107,14 @@ EOF;
     public function testDecodeWillThrowExceptionWhenUnexpectedIss(): void
     {
         $payload = [
-            "kid" => "1234example=",
+            "kid" => static::KID,
             "alg" => "RS256",
-            "aud" => "POOL_ID",
+            "aud" => static::POOL_ID,
             "iss" => "https://example.org", // Intentionally incorrect "iss".
             "token_use" => 'access',
         ];
 
-        $encoded = JWT::encode($payload, self::PRIVATE_KEY, 'RS256', '1234example=');
+        $encoded = JWT::encode($payload, static::$privateKey, 'RS256', static::KID);
 
         $this->expectException(InvalidTokenException::class);
         $this->expectExceptionMessage('"iss" invalid');
@@ -91,14 +125,14 @@ EOF;
     public function testDecodeWillThrowExceptionWhenUnexpectedTokenUse(): void
     {
         $payload = [
-            "kid" => "1234example=",
+            "kid" => static::KID,
             "alg" => "RS256",
-            "aud" => "POOL_ID",
-            "iss" => sprintf('https://cognito-idp.%s.amazonaws.com/%s', 'eu-west-2', 'POOL_ID'),
+            "aud" => static::POOL_ID,
+            "iss" => $this->issuer(),
             "token_use" => 'not_expected',
         ];
 
-        $encoded = JWT::encode($payload, self::PRIVATE_KEY, 'RS256', '1234example=');
+        $encoded = JWT::encode($payload, static::$privateKey, 'RS256', static::KID);
 
         $this->expectException(InvalidTokenException::class);
         $this->expectExceptionMessage('"token_use" invalid');
@@ -109,14 +143,14 @@ EOF;
     public function testDecodeWillThrowExceptionWhenUnexpectedAud(): void
     {
         $payload = [
-            "kid" => "1234example=",
+            "kid" => static::KID,
             "alg" => "RS256",
             "aud" => "NOT_POOL_ID",
-            "iss" => sprintf('https://cognito-idp.%s.amazonaws.com/%s', 'eu-west-2', 'POOL_ID'),
+            "iss" => $this->issuer(),
             "token_use" => 'id',
         ];
 
-        $encoded = JWT::encode($payload, self::PRIVATE_KEY, 'RS256', '1234example=');
+        $encoded = JWT::encode($payload, static::$privateKey, 'RS256', static::KID);
 
         $this->expectException(InvalidTokenException::class);
         $this->expectExceptionMessage('"aud" invalid');
@@ -137,8 +171,22 @@ EOF;
         $this->client->setHttpClient($httpClient);
 
         $this->expectException(InvalidTokenException::class);
-        $this->expectErrorMessage($exceptionMessage);
+        $this->expectExceptionMessage($exceptionMessage);
 
         $this->client->decodeToken('');
+    }
+
+    protected function issuer(): string
+    {
+        return sprintf('https://cognito-idp.%s.amazonaws.com/%s', static::REGION, static::POOL_ID);
+    }
+
+    /**
+     * JWKS carries the modulus and exponent base64url encoded, which is not what base64_encode
+     * produces.
+     */
+    protected static function base64UrlEncode(string $binary): string
+    {
+        return rtrim(strtr(base64_encode($binary), '+/', '-_'), '=');
     }
 }
