@@ -426,7 +426,7 @@ class Client implements OAuthClientInterface
             );
         }
 
-        $request = $factory->createRequest('get', $url);
+        $request = $factory->createRequest('GET', $url);
 
         $response = $this->getHttpClient()->sendRequest($request);
 
