@@ -11,6 +11,11 @@ on:
   # auto-disabled for inactivity.
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
 # These were previously pinned to PHP 8.0, so an analyser could break on a supported version
 # without anything noticing — which is exactly what happened: Psalm 4.30 cannot run on 8.4 at
 # all. Running each analyser across the full supported range is what catches that.

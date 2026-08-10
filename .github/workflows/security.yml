@@ -10,6 +10,15 @@ on:
   # See the note in tests.yml.
   workflow_dispatch:
 
+# security-events: write is required by github/codeql-action/upload-sarif at the end of
+# this workflow. A read-only permissions block — which is what the generic CodeQL
+# 'workflow does not contain permissions' autofix suggests — would fail every matrix cell
+# at the upload step.
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
 jobs:
   snyk:
     runs-on: ubuntu-latest
