@@ -7,16 +7,29 @@ on:
     branches: [ main ]
   schedule:
     - cron: '0 0 * * 1'
+  # See the note in tests.yml.
+  workflow_dispatch:
+
+# security-events: write is required by github/codeql-action/upload-sarif at the end of
+# this workflow. A read-only permissions block — which is what the generic CodeQL
+# 'workflow does not contain permissions' autofix suggests — would fail every matrix cell
+# at the upload step.
+permissions:
+  contents: read
+  actions: read
+  security-events: write
 
 jobs:
   snyk:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
+        php: ['8.2', '8.3', '8.4']
         stability: [prefer-lowest, prefer-stable]
 
-    name: Snyk - ${{ matrix.stability }}
+    name: Snyk - PHP ${{ matrix.php }} - ${{ matrix.stability }}
 
     steps:
       - name: Checkout code
@@ -25,7 +38,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.0'
+          php-version: ${{ matrix.php }}
           coverage: none
           extensions: mbstring
 
@@ -44,3 +57,6 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk.sarif
+          # Each matrix cell resolves a different dependency tree, so each needs its own
+          # category — uploads sharing one would overwrite each other's results.
+          category: snyk-php${{ matrix.php }}-${{ matrix.stability }}

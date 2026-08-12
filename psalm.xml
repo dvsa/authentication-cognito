@@ -13,4 +13,32 @@
             <directory name="vendor" />
         </ignoreFiles>
     </projectFiles>
+
+    <!--
+        Psalm 6 turns on several checks that were not running under the 4.x line this project
+        previously pinned. Most were addressed rather than silenced:
+
+        findUnusedCode is left enabled. It reported 25 PossiblyUnusedMethod and 3 ClassMustBeFinal
+        because whole-project unused-code analysis cannot see a library's consumers. Marking the
+        three published classes @api resolves both, and is a better answer than switching the
+        check off, because genuinely dead private and internal code is still reported.
+
+        The three RiskyTruthyFalsyComparison findings were fixed by making the null and
+        empty-string cases explicit.
+
+        What remains cannot be fixed here:
+
+        MissingOverrideAttribute wants #[\Override], which is PHP 8.3 and up. This package
+        supports 8.2, so the attribute cannot be applied unconditionally. Worth revisiting if the
+        floor ever moves to 8.3 — which would also allow PHPUnit 12.
+
+        RedundantCast is all ten instances of (string) $e->getAwsErrorMessage(). Psalm infers that
+        as non-null, but the SDK documents it @return string|null, and the cast is what stops a
+        null reaching ClientException's string parameter as a TypeError. Psalm's stub is more
+        optimistic than the source it describes.
+    -->
+    <issueHandlers>
+        <MissingOverrideAttribute errorLevel="suppress" />
+        <RedundantCast errorLevel="suppress" />
+    </issueHandlers>
 </psalm>

@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dvsa\Authentication\Cognito;
 
 use ArrayAccess;
+use ArrayObject;
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
 use Aws\Exception\AwsException;
 use Dvsa\Contracts\Auth\AccessTokenInterface;
@@ -18,11 +21,13 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Psr7\HttpFactory;
-use Illuminate\Support\Collection;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 
+/**
+ * @api
+ */
 class Client implements OAuthClientInterface
 {
     use CreatesResourceOwners;
@@ -33,6 +38,7 @@ class Client implements OAuthClientInterface
      */
     public static int $leeway = 0;
 
+    /** @var ArrayAccess<string, Key>|null */
     protected ?ArrayAccess $jwtWebKeys = null;
 
     protected ?ClientInterface $httpClient = null;
@@ -41,9 +47,9 @@ class Client implements OAuthClientInterface
 
     public function __construct(
         protected CognitoIdentityProviderClient $cognitoClient,
-        protected string                        $clientId,
-        protected string                        $clientSecret,
-        protected string                        $poolId
+        protected string $clientId,
+        protected string $clientSecret,
+        protected string $poolId
     ) {
         $this->resourceOwnerClass = CognitoUser::class;
     }
@@ -102,6 +108,8 @@ class Client implements OAuthClientInterface
     /**
      * @see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminRespondToAuthChallenge.html
      *
+     * @param array<string, string> $challengeResponses
+     *
      * @throws ClientException when there is an issue with authenticating a user.
      * @throws ChallengeException when a challenge is returned for this user.
      */
@@ -109,7 +117,7 @@ class Client implements OAuthClientInterface
     {
         try {
             $identifier = $challengeResponses['USERNAME'] ?? null;
-            if (empty($identifier)) {
+            if ($identifier === null || $identifier === '') {
                 throw new ClientException("ChallengeResponse must contain 'USERNAME'");
             }
 
@@ -266,14 +274,6 @@ class Client implements OAuthClientInterface
     public function decodeToken(string $token): array
     {
         try {
-            /**
-             * The typing of the JWT library is not quite right for `decode()` method for PHPStan as it doesn't accept ArrayAccess.
-             * The following type is required to cast `ArrayAccess<string, Key>` to just an expected `array<string, Key>`.
-             *
-             * Can be removed once fixed in the JWT library.
-             *
-             * @var array<string, Key> $keySet
-             */
             $keySet = $this->getJwtWebKeys();
 
             JWT::$leeway = self::$leeway;
@@ -289,6 +289,8 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * @param array<string, mixed> $tokenClaims
+     *
      * @throws InvalidTokenException when claims aren't valid and not to be trusted.
      */
     public function validateTokenClaims(array $tokenClaims): void
@@ -319,7 +321,9 @@ class Client implements OAuthClientInterface
     {
         // If the ID token is not null, use to build the resource owner.
         // Otherwise, use the claims from the access token.
-        if ($idToken = $token->getIdToken()) {
+        $idToken = $token->getIdToken();
+
+        if ($idToken !== null && $idToken !== '') {
             $tokenClaims = $this->decodeToken($idToken);
         } else {
             $tokenClaims = $this->decodeToken($token->getToken());
@@ -360,12 +364,17 @@ class Client implements OAuthClientInterface
         }
     }
 
+    /**
+     * @param ArrayAccess<string, Key>|null $keys
+     */
     public function setJwtWebKeys(?ArrayAccess $keys): void
     {
         $this->jwtWebKeys = $keys;
     }
 
     /**
+     * @return ArrayAccess<string, Key>
+     *
      * @throws ClientExceptionInterface
      * @throws \JsonException
      */
@@ -403,6 +412,8 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * @return ArrayAccess<string, Key>
+     *
      * @throws ClientExceptionInterface|\JsonException
      */
     protected function downloadJwtWebKeys(): ArrayAccess
@@ -432,7 +443,7 @@ class Client implements OAuthClientInterface
 
         $body = $response->getBody()->getContents();
         if (empty($body)) {
-            return new Collection();
+            return new ArrayObject();
         }
 
         $keys = json_decode($body, associative:true);
@@ -441,7 +452,7 @@ class Client implements OAuthClientInterface
             throw new \JsonException(sprintf('Invalid JSON rules input: "%s".', json_last_error_msg()));
         }
 
-        return new Collection(JWK::parseKeySet($keys));
+        return new ArrayObject(JWK::parseKeySet($keys));
     }
 
     protected function cognitoSecretHash(string $identifier): string
@@ -466,6 +477,10 @@ class Client implements OAuthClientInterface
 
     /**
      * Format attributes from [Key => Value] to a AWS compatible [['Name', 'Value'], ...] array.
+     *
+     * @param array<string, mixed> $attributes
+     *
+     * @return list<array{Name: string, Value: string}>
      */
     protected function formatAttributes(array $attributes): array
     {
@@ -495,6 +510,8 @@ class Client implements OAuthClientInterface
     }
 
     /**
+     * @param array<string, mixed> $response
+     *
      * @throws ClientException when an auth response format is malformed.
      * @throws ChallengeException when an auth response returns a challenge.
      */

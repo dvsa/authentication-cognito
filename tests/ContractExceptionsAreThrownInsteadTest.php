@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
@@ -12,6 +14,7 @@ use Dvsa\Contracts\Auth\Exceptions\ClientException;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
 use GuzzleHttp\HandlerStack;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ContractExceptionsAreThrownInsteadTest extends TestCase
@@ -40,9 +43,7 @@ class ContractExceptionsAreThrownInsteadTest extends TestCase
         $this->client->setHttpClient($httpClient);
     }
 
-    /**
-     * @dataProvider provideAllClientInterfaceMethods
-     */
+    #[DataProvider('provideAllClientInterfaceMethods')]
     public function testMethodsWillThrowContractedException(string $method, array $args = []): void
     {
         $this->mockHandler->append(function (CommandInterface $cmd) {
@@ -54,7 +55,7 @@ class ContractExceptionsAreThrownInsteadTest extends TestCase
         $this->client->{$method}(...$args);
     }
 
-    public function provideAllClientInterfaceMethods(): \Generator
+    public static function provideAllClientInterfaceMethods(): \Generator
     {
         yield ['authenticate', ['IDENTIFIER', 'PASSWORD']];
         yield ['register', ['IDENTIFIER', 'PASSWORD', []]];

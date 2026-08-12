@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
@@ -12,17 +14,17 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Handler\MockHandler as MockHttpHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
-use Illuminate\Support\Collection;
+use ArrayObject;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 class TokenValidityTest extends TestCase
 {
-    const KID = '1234example=';
+    protected const KID = '1234example=';
 
-    const REGION = 'eu-west-2';
+    protected const REGION = 'eu-west-2';
 
-    const POOL_ID = 'POOL_ID';
+    protected const POOL_ID = 'POOL_ID';
 
     /**
      * Signing key material is generated per run rather than committed. These tests need a private
@@ -84,7 +86,7 @@ class TokenValidityTest extends TestCase
 
         $this->client = new Client($cognitoIdentityProviderMock, 'CLIENT_ID', 'CLIENT_SECRET', static::POOL_ID);
 
-        $this->client->setJwtWebKeys(new Collection(JWK::parseKeySet(static::$jwks)));
+        $this->client->setJwtWebKeys(new ArrayObject(JWK::parseKeySet(static::$jwks)));
     }
 
     public function testWillDecodeCompliantJwt(): void

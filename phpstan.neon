@@ -1,6 +1,12 @@
 parameters:
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
-    level: max
+    # "max" is a moving target — it meant level 8 under the 0.12 line this project previously
+    # pinned, and means level 10 under 2.x. Pinning the number keeps a tool upgrade from
+    # silently changing how strict the build is.
+    #
+    # Level 9 is 33 errors and 10 is 42, all of them mixed-narrowing in the AWS response
+    # handling. That is a real piece of work rather than an annotation pass, so it is left as a
+    # deliberate next step rather than suppressed here.
+    level: 8
+
     paths:
         - src

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dvsa\Authentication\Cognito\Tests;
 
 use Aws\CognitoIdentityProvider\CognitoIdentityProviderClient;
@@ -15,7 +17,7 @@ use PHPUnit\Framework\TestCase;
 
 class ResourceOwnerObjectReturnedFromMethodsTest extends TestCase
 {
-    const RESOURCE_OWNER = CognitoUser::class;
+    protected const RESOURCE_OWNER = CognitoUser::class;
 
     protected AwsMockHandler $mockHandler;
 

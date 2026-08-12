@@ -7,11 +7,27 @@ on:
     branches: [ main ]
   schedule:
     - cron: '0 0 * * 1'
+  # See the note in tests.yml — lets a run be started by hand after the schedule has been
+  # auto-disabled for inactivity.
+  workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
+# These were previously pinned to PHP 8.0, so an analyser could break on a supported version
+# without anything noticing — which is exactly what happened: Psalm 4.30 cannot run on 8.4 at
+# all. Running each analyser across the full supported range is what catches that.
 jobs:
   phpstan:
-    name: PHPStan
+    name: PHPStan - PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
 
     steps:
       - name: Checkout code
@@ -20,7 +36,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.0'
+          php-version: ${{ matrix.php }}
           coverage: none
           extensions: mbstring, intl
 
@@ -34,8 +50,13 @@ jobs:
         run: vendor/bin/phpstan analyze --no-progress
 
   php-codesniffer:
-    name: PHP-CodeSniffer
+    name: PHP-CodeSniffer - PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
 
     steps:
       - name: Checkout code
@@ -44,7 +65,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.0'
+          php-version: ${{ matrix.php }}
           coverage: none
           extensions: mbstring
 
@@ -58,8 +79,13 @@ jobs:
         run: vendor/bin/phpcs -q
 
   psalm:
-    name: Psalm
+    name: Psalm - PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
 
     steps:
       - name: Checkout code
@@ -68,7 +94,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.0'
+          php-version: ${{ matrix.php }}
           coverage: none
           extensions: mbstring, intl
 

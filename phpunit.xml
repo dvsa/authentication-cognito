@@ -2,11 +2,52 @@
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="./vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
+         cacheDirectory=".phpunit.cache"
          colors="true"
+         executionOrder="random"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         failOnIncomplete="true"
+         failOnSkipped="true"
+         failOnEmptyTestSuite="true"
+         failOnPhpunitDeprecation="true"
+         failOnPhpunitWarning="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerErrors="true"
+         displayDetailsOnIncompleteTests="true"
+         displayDetailsOnSkippedTests="true"
+         displayDetailsOnPhpunitDeprecations="true"
 >
     <testsuites>
         <testsuite name="Unit">
             <directory suffix="Test.php">./tests</directory>
         </testsuite>
     </testsuites>
+
+    <!--
+        ignoreSuppressionOfDeprecations is what makes failOnDeprecation worth having.
+        symfony/deprecation-contracts raises deprecations via @trigger_error, and PHPUnit honours
+        the @ by default — so without this the whole trigger_deprecation() family, which is how
+        guzzle and psr7 announce theirs, passes silently.
+
+        ignoreIndirectDeprecations is deliberately NOT set, despite being the obvious way to
+        quieten third-party noise. PHPUnit classifies a deprecation by the frames around where it
+        is raised, not by what set it off, so one raised inside guzzlehttp/psr7 counts as indirect
+        even when src/ is what triggered it. Turning it on hides precisely the class of bug this
+        suite most needs to catch — see the lowercase HTTP method fix in the preceding commit.
+
+        The cost is that genuinely third-party deprecations fail the build too, which turns out
+        to be the point rather than a drawback: every one it has surfaced so far was a stale
+        dependency floor worth raising, not noise worth muting. The suite is clean on every
+        matrix cell, prefer-lowest included.
+    -->
+    <source ignoreSuppressionOfDeprecations="true">
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
 </phpunit>
