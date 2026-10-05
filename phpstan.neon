@@ -1,3 +1,6 @@
+includes:
+    - phpstan-aws-types.php
+
 parameters:
     # "max" is a moving target — it meant level 8 under the 0.12 line this project previously
     # pinned, and means level 10 under 2.x. Pinning the number keeps a tool upgrade from

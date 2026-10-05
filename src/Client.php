@@ -132,6 +132,8 @@ class Client implements OAuthClientInterface
      */
     public function responseToAuthChallenge(string $challengeName, array $challengeResponses, string $session): AccessTokenInterface
     {
+        $this->assertSupportedChallengeName($challengeName);
+
         try {
             $identifier = $challengeResponses['USERNAME'] ?? null;
             if ($identifier === null || $identifier === '') {
@@ -495,6 +497,29 @@ class Client implements OAuthClientInterface
         }
 
         return new ArrayObject(JWK::parseKeySet($keys));
+    }
+
+    /**
+     * Checks the name against the installed AWS SDK's model for AdminRespondToAuthChallenge, so the
+     * accepted names follow the SDK rather than being copied here. PHPStan reads the same model for
+     * the CognitoChallengeName alias (see phpstan-aws-types.php).
+     *
+     * @phpstan-assert CognitoChallengeName $challengeName
+     * @psalm-assert non-empty-string $challengeName
+     *
+     * @throws ClientException when the SDK does not model the challenge name.
+     */
+    protected function assertSupportedChallengeName(string $challengeName): void
+    {
+        $names = $this->cognitoClient->getApi()
+            ->getOperation('AdminRespondToAuthChallenge')
+            ->getInput()
+            ->getMember('ChallengeName')
+            ->toArray()['enum'] ?? [];
+
+        if (!in_array($challengeName, $names, true)) {
+            throw new ClientException(sprintf("Unsupported challenge name '%s'", $challengeName));
+        }
     }
 
     protected function cognitoSecretHash(string $identifier): string
